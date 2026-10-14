@@ -3,12 +3,26 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Irfan bin Zainuddin | Senior PHP / Laravel Developer</title>
-  <meta name="description" content="Irfan bin Zainuddin, Senior PHP/Laravel Developer based in Kuala Lumpur. 5+ years building secure, workflow-heavy web systems for government and enterprise clients.">
+  <title>Irfan Zainuddin | Senior PHP / Laravel Developer, Kuala Lumpur</title>
+  <meta name="description" content="Irfan bin Zainuddin, Senior PHP/Laravel Developer in Kuala Lumpur. 5+ years building secure, workflow-heavy web systems for government and enterprise: e-procurement, HRMS, BI dashboards, RBAC and audit trails.">
+  <meta name="author" content="Irfan bin Zainuddin">
+  <link rel="canonical" href="https://rkean.github.io/">
+  <meta property="og:type" content="profile">
+  <meta property="og:url" content="https://rkean.github.io/">
+  <meta property="og:site_name" content="Irfan Zainuddin">
   <meta property="og:title" content="Irfan bin Zainuddin | Senior PHP / Laravel Developer">
-  <meta property="og:description" content="Laravel, PHP 8, MySQL, REST APIs, RBAC and audit trails for government and enterprise systems.">
+  <meta property="og:description" content="Laravel, PHP 8, MySQL, REST APIs, RBAC and audit trails for government and enterprise systems. Projects with screenshots.">
+  <meta property="og:image" content="https://rkean.github.io/assets/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Portfolio of Irfan bin Zainuddin, Senior PHP / Laravel Developer">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Irfan bin Zainuddin | Senior PHP / Laravel Developer">
+  <meta name="twitter:description" content="Laravel, PHP 8, MySQL, REST APIs, RBAC and audit trails for government and enterprise systems.">
+  <meta name="twitter:image" content="https://rkean.github.io/assets/og-image.png">
   <meta name="theme-color" content="#0f172a">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"Person","name":"Irfan bin Zainuddin","jobTitle":"Senior PHP / Laravel Developer","url":"https://rkean.github.io/","email":"mailto:keanzs7@gmail.com","address":{"@type":"PostalAddress","addressLocality":"Kuala Lumpur","addressCountry":"MY"},"alumniOf":"UniKL MFI","knowsAbout":["Laravel","PHP","MySQL","Yii2","REST APIs","RBAC","Livewire","Vue.js"]}</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
@@ -134,7 +148,7 @@
       <div class="container">
         <p class="kicker">Projects</p>
         <h2>Selected work</h2>
-        <p class="section__note">Source code for all projects is private. Screenshots are added where they can be shared.</p>
+        <p class="section__note">Source code for client projects is private. Screenshots come from each system&rsquo;s user manuals (names, amounts and contact details blurred) or from local runs with invented demo data. Click any screenshot to enlarge.</p>
 
         <!-- Featured -->
         <article class="featured">
@@ -144,19 +158,23 @@
             <p>A website for EA FC (formerly FIFA) Pro Clubs players to organise, create and join leagues, with a companion mobile app. An earlier version of the platform also existed before the current build.</p>
             <ul class="list">
               <li>Sign in with Discord via Laravel Socialite</li>
-              <li>Authentication with Laravel Sanctum</li>
+              <li>Authentication with Laravel Sanctum, including bearer tokens for the mobile app</li>
               <li>Roles and permissions with Spatie Laravel Permission</li>
-              <li>Image handling</li>
-              <li>Companion mobile app in React Native / Expo (TypeScript)</li>
+              <li>Syncs EA FC Pro Clubs club, match and player stats into its own database</li>
+              <li>Companion Flutter mobile app (Android / iOS) on the Laravel API</li>
             </ul>
-            <ul class="tags tags--light"><li>Laravel 12</li><li>Inertia</li><li>Vue</li><li>Sanctum</li><li>Socialite (Discord)</li><li>Spatie Permission</li><li>React Native</li><li>Expo</li><li>TypeScript</li></ul>
+            <ul class="tags tags--light"><li>Laravel 12</li><li>Inertia</li><li>Vue 3</li><li>Tailwind CSS</li><li>Sanctum</li><li>Socialite (Discord)</li><li>Spatie Permission</li><li>Flutter</li></ul>
+            <div class="thumbs">
+              <a href="assets/img/eafc-club.webp" data-lightbox="eafc" data-caption="Club page: record, form and team formation (local run, demo data)"><img src="assets/img/eafc-club.webp" alt="EAFC club page with wins, draws, losses, form and team formation" width="1440" height="900" loading="lazy" decoding="async"></a>
+              <a href="assets/img/eafc-login.webp" data-lightbox="eafc" data-caption="Sign in with email or Discord"><img src="assets/img/eafc-login.webp" alt="EAFC sign-in page with email login and Continue with Discord button" width="1440" height="900" loading="lazy" decoding="async"></a>
+              <span>Local run with invented clubs and players</span>
+            </div>
           </div>
-          <div class="featured__media">
-            <div class="shot shot--web"><span>Web app screenshot<br><small>placeholder</small></span></div>
-            <div class="shot shot--phone"><span>Mobile app<br><small>placeholder</small></span></div>
+          <div class="featured__media featured__media--real">
+            <a class="frame frame--web" href="assets/img/eafc-pro-clubs.webp" data-lightbox="eafc" data-caption="Pro Clubs browser: club table, recent matches and top scorers (local run, demo data)"><img src="assets/img/eafc-pro-clubs.webp" alt="EAFC Pro Clubs League web app showing a club statistics table, recent matches and top scorers" width="1440" height="900" loading="lazy" decoding="async"></a>
+            <a class="frame frame--phone" href="assets/img/eafc-mobile-web.webp" data-lightbox="eafc" data-caption="Responsive layout on a phone-sized screen (local run, demo data)"><img src="assets/img/eafc-mobile-web.webp" alt="EAFC Pro Clubs League web app on a phone-sized screen" width="390" height="844" loading="lazy" decoding="async"></a>
           </div>
         </article>
-
 
         <!-- Featured: RAC -->
         <article class="featured featured--case" id="rac">
@@ -189,20 +207,21 @@
             </div>
           </div>
           <div class="gallery">
-            <figure class="gallery__main"><a href="assets/img/rac-main-dashboard.png" target="_blank" rel="noopener"><img src="assets/img/rac-main-dashboard.png" alt="RAC main dashboard with rental map of Peninsular Malaysia, KPI cards, attendance gauge and charts" loading="lazy" width="1600" height="784"></a><figcaption>Main dashboard (Admin / BOD): KPI cards, live steel price, attendance, rental map</figcaption></figure>
-            <figure><a href="assets/img/rac-commercial-dashboard.png" target="_blank" rel="noopener"><img src="assets/img/rac-commercial-dashboard.png" alt="RAC commercial module dashboard with rental charts by state and zone" loading="lazy" width="1440" height="706"></a><figcaption>Commercial: rentals by state, zone and status</figcaption></figure>
-            <figure><a href="assets/img/rac-infra-dashboard.png" target="_blank" rel="noopener"><img src="assets/img/rac-infra-dashboard.png" alt="RAC infra module dashboard with building categories and asset table" loading="lazy" width="1600" height="788"></a><figcaption>Infra: building categories and asset register</figcaption></figure>
-            <figure><a href="assets/img/rac-reports-filter-export.png" target="_blank" rel="noopener"><img src="assets/img/rac-reports-filter-export.png" alt="RAC report screen with filters and export button" loading="lazy" width="1600" height="785"></a><figcaption>Reporting: filters with PDF/Excel export</figcaption></figure>
-            <figure><a href="assets/img/rac-rental-record.png" target="_blank" rel="noopener"><img src="assets/img/rac-rental-record.png" alt="RAC rental record detail page with location map" loading="lazy" width="1397" height="689"></a><figcaption>Rental record with GIS location</figcaption></figure>
-            <figure><a href="assets/img/rac-user-roles.png" target="_blank" rel="noopener"><img src="assets/img/rac-user-roles.png" alt="RAC user management screen with user access roles" loading="lazy" width="1298" height="631"></a><figcaption>User management and access control</figcaption></figure>
+            <figure class="gallery__main"><a href="assets/img/rac-main-dashboard.webp" data-lightbox="rac" data-caption="Main dashboard (Admin / BOD): KPI cards, live steel price, attendance, rental map"><img src="assets/img/rac-main-dashboard.webp" alt="RAC main dashboard with rental map of Peninsular Malaysia, KPI cards, attendance gauge and charts" loading="lazy" decoding="async" width="1600" height="784"></a><figcaption>Main dashboard (Admin / BOD): KPI cards, live steel price, attendance, rental map</figcaption></figure>
+            <figure><a href="assets/img/rac-commercial-dashboard.webp" data-lightbox="rac" data-caption="Commercial: rentals by state, zone and status"><img src="assets/img/rac-commercial-dashboard.webp" alt="RAC commercial module dashboard with rental charts by state and zone" loading="lazy" decoding="async" width="1440" height="706"></a><figcaption>Commercial: rentals by state, zone and status</figcaption></figure>
+            <figure><a href="assets/img/rac-infra-dashboard.webp" data-lightbox="rac" data-caption="Infra: building categories and asset register"><img src="assets/img/rac-infra-dashboard.webp" alt="RAC infra module dashboard with building categories and asset table" loading="lazy" decoding="async" width="1600" height="788"></a><figcaption>Infra: building categories and asset register</figcaption></figure>
+            <figure><a href="assets/img/rac-reports-filter-export.webp" data-lightbox="rac" data-caption="Reporting: filters with PDF/Excel export"><img src="assets/img/rac-reports-filter-export.webp" alt="RAC report screen with filters and export button" loading="lazy" decoding="async" width="1600" height="785"></a><figcaption>Reporting: filters with PDF/Excel export</figcaption></figure>
+            <figure><a href="assets/img/rac-rental-record.webp" data-lightbox="rac" data-caption="Rental record with GIS location"><img src="assets/img/rac-rental-record.webp" alt="RAC rental record detail page with location map" loading="lazy" decoding="async" width="1397" height="689"></a><figcaption>Rental record with GIS location</figcaption></figure>
+            <figure><a href="assets/img/rac-user-roles.webp" data-lightbox="rac" data-caption="User management and access control"><img src="assets/img/rac-user-roles.webp" alt="RAC user management screen with user access roles" loading="lazy" decoding="async" width="1298" height="631"></a><figcaption>User management and access control</figcaption></figure>
           </div>
           <p class="case__note">Screenshots are from the system's user manuals. Names, amounts, contact details and account data are blurred.</p>
         </article>
 
-        <div class="projects">
+        <h3 class="sub">Current and recent roles</h3>
+        <div class="projects projects--3">
           <article class="project">
-            <div class="shot shot--card shot--private"><span>Confidential client project<br><small>no screenshots</small></span></div>
             <div class="project__body">
+              <p class="lock"><svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5Zm-3 8V7a3 3 0 0 1 6 0v3H9Z"/></svg> Confidential client project &middot; no screenshots</p>
               <p class="project__meta">Government &middot; Aug 2025 – Present</p>
               <h3>Government E-Procurement Platform</h3>
               <p>An e-procurement platform for a Malaysian city authority, through which all of its tenders will run once live. Covers tendering, contractor and supplier portals, offer documents, tender evaluation, post-award consultant processes and claim workflows.</p>
@@ -216,8 +235,8 @@
           </article>
 
           <article class="project">
-            <div class="shot shot--card shot--private"><span>Confidential client project<br><small>no screenshots</small></span></div>
             <div class="project__body">
+              <p class="lock"><svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5Zm-3 8V7a3 3 0 0 1 6 0v3H9Z"/></svg> Confidential client project &middot; no screenshots</p>
               <p class="project__meta">Government &middot; Aug 2025 – Present</p>
               <h3>Licence Survey &amp; Management System</h3>
               <p>A licence survey system for a Malaysian city authority, used to monitor premises and billboard licences, records and compliance.</p>
@@ -228,24 +247,10 @@
             </div>
           </article>
 
-          <article class="project">
-            <div class="shot shot--card"><span>Screenshot<br><small>placeholder</small></span></div>
-            <div class="project__body">
-              <p class="project__meta">HRMS &middot; Former company</p>
-              <h3>GGMS &amp; GGMS 2.0</h3>
-              <p>A human resource management system (HRMS) built for a former employer. GGMS 2.0 is the modernisation of the original system.</p>
-              <ul class="list">
-                <li>Built on Yii2 with MySQL</li>
-                <li>Containerised with Docker</li>
-                <li>Automated tests with Codeception</li>
-              </ul>
-              <ul class="tags"><li>Yii2</li><li>PHP</li><li>MySQL</li><li>Docker</li><li>Codeception</li></ul>
-            </div>
-          </article>
 
           <article class="project">
-            <div class="shot shot--card shot--private"><span>Government project<br><small>no screenshots</small></span></div>
             <div class="project__body">
+              <p class="lock"><svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5Zm-3 8V7a3 3 0 0 1 6 0v3H9Z"/></svg> Government project &middot; no screenshots</p>
               <p class="project__meta">Government &middot; Jul 2024 – Jul 2025</p>
               <h3>National Government Web System</h3>
               <p>A public-facing national government platform with 100,000+ users, where I was the sole core developer.</p>
@@ -259,20 +264,78 @@
           </article>
         </div>
 
-        <h3 class="sub">More projects</h3>
-        <div class="minis">
-          <article class="mini mini--shot">
-            <img src="assets/img/ripi-product-catalog.png" alt="RIPI mobile app product catalogue screen" loading="lazy" width="300" height="604">
-            <div>
-              <h4>RIPI Inventory &amp; Supply Chain System</h4>
-              <p>Plantation and estate system for a pineapple producer in Rompin, Pahang, with a mobile app. Modules for harvesting, inventory, supply chain and sales orders, plus QR codes for fields, blocks and storage.</p>
-              <ul class="tags tags--sm"><li>Web</li><li>Mobile app</li><li>QR code</li></ul>
+        <h3 class="sub">Systems I have built, with screenshots</h3>
+        <div class="projects projects--shots">
+          <article class="project project--shots">
+            <div class="pshots"><figure class="pshots__main"><a href="assets/img/ggms-dashboard.webp" data-lightbox="ggms" data-caption="Dashboard with clock-in and today&rsquo;s attendance"><img src="assets/img/ggms-dashboard.webp" alt="GGMS dashboard with clock-in button, quick links and today&rsquo;s attendance list" loading="lazy" decoding="async" width="1440" height="900"></a><figcaption>Dashboard with clock-in and today&rsquo;s attendance</figcaption></figure><figure><a href="assets/img/ggms-leave.webp" data-lightbox="ggms" data-caption="Leave: weekly and monthly charts, leave list"><img src="assets/img/ggms-leave.webp" alt="GGMS leave page with charts and a leave list" loading="lazy" decoding="async" width="1440" height="900"></a><figcaption>Leave: weekly and monthly charts, leave list</figcaption></figure><figure><a href="assets/img/ggms-attendance.webp" data-lightbox="ggms" data-caption="Attendance records with filters and export"><img src="assets/img/ggms-attendance.webp" alt="GGMS attendance list with date, status and employee filters" loading="lazy" decoding="async" width="1440" height="900"></a><figcaption>Attendance records with filters and export</figcaption></figure></div>
+            <div class="project__body">
+              <p class="project__meta">HRMS &middot; Yii2</p>
+              <h3>GGMS &amp; GGMS 2.0</h3>
+              <p>A human resource management system (Gading Group Management System). GGMS 2.0 is the modernisation of the original system.</p>
+              <ul class="list"><li>Modules in the codebase include employees, leave, claims, attendance, payroll, announcements, assets and projects</li><li>Dashboard with geolocation clock-in / clock-out and today&rsquo;s attendance</li><li>Containerised with Docker; automated tests with Codeception</li></ul>
+              <ul class="tags"><li>Yii2</li><li>PHP</li><li>MySQL</li><li>Docker</li><li>Codeception</li></ul>
+              <p class="project__note">Local run with invented demo data.</p>
             </div>
           </article>
-          <article class="mini mini--wide">
-            <h4>Seven24 HRMS</h4>
-            <p>Galtech System's HR management product, covering HR functions such as employee records, payroll and performance in one package.</p>
+          <article class="project project--shots">
+            <div class="pshots"><figure class="pshots__main"><a href="assets/img/ekemalangan-dashboard.webp" data-lightbox="ekemalangan" data-caption="Dashboard: vehicle counts, accident statistics by state"><img src="assets/img/ekemalangan-dashboard.webp" alt="eKemalangan dashboard with vehicle counts, accident statistics by state and latest tasks" loading="lazy" decoding="async" width="1126" height="639"></a><figcaption>Dashboard: vehicle counts, accident statistics by state</figcaption></figure><figure><a href="assets/img/ekemalangan-investigation-report.webp" data-lightbox="ekemalangan" data-caption="Investigation report form"><img src="assets/img/ekemalangan-investigation-report.webp" alt="eKemalangan full investigation report form with section navigation" loading="lazy" decoding="async" width="1126" height="1220"></a><figcaption>Investigation report form</figcaption></figure><figure><a href="assets/img/ekemalangan-vehicle-form.webp" data-lightbox="ekemalangan" data-caption="Vehicle data form"><img src="assets/img/ekemalangan-vehicle-form.webp" alt="eKemalangan vehicle data update form" loading="lazy" decoding="async" width="1126" height="857"></a><figcaption>Vehicle data form</figcaption></figure></div>
+            <div class="project__body">
+              <p class="project__meta">Government &middot; JBPM</p>
+              <h3>eKemalangan</h3>
+              <p>Vehicle accident reporting system for Jabatan Bomba dan Penyelamat Malaysia (JBPM), covering system administration, accident data management and statistical reporting.</p>
+              <ul class="list"><li>Department vehicle register and accident reports tracked from new report to completed investigation</li><li>Structured investigation report form with draft and submit</li></ul>
+              <ul class="tags"><li>Web</li><li>Government</li><li>Reporting</li></ul>
+              <p class="project__note">From the user manual; personal data and amounts blurred.</p>
+            </div>
           </article>
+          <article class="project project--shots">
+            <div class="pshots"><figure class="pshots__main"><a href="assets/img/jakoa-booking-portal.webp" data-lightbox="jakoa" data-caption="Booking system: vehicles and meeting rooms"><img src="assets/img/jakoa-booking-portal.webp" alt="JAKOA booking system landing page for vehicle and meeting room booking" loading="lazy" decoding="async" width="1253" height="659"></a><figcaption>Booking system: vehicles and meeting rooms</figcaption></figure><figure><a href="assets/img/jakoa-vehicle-booking.webp" data-lightbox="jakoa" data-caption="Vehicle booking with availability calendar"><img src="assets/img/jakoa-vehicle-booking.webp" alt="JAKOA vehicle booking step with availability calendar" loading="lazy" decoding="async" width="971" height="708"></a><figcaption>Vehicle booking with availability calendar</figcaption></figure><figure><a href="assets/img/jakoa-intranet-calendar.webp" data-lightbox="jakoa" data-caption="Intranet department calendar"><img src="assets/img/jakoa-intranet-calendar.webp" alt="JAKOA intranet department calendar month view" loading="lazy" decoding="async" width="1299" height="623"></a><figcaption>Intranet department calendar</figcaption></figure></div>
+            <div class="project__body">
+              <p class="project__meta">Government &middot; WordPress</p>
+              <h3>JAKOA Portal &amp; Intranet</h3>
+              <p>Official portal and staff intranet for Jabatan Kemajuan Orang Asli (JAKOA), built on WordPress. The intranet user manuals cover a department calendar and online booking of vehicles and meeting rooms.</p>
+              
+              <ul class="tags"><li>WordPress</li><li>Intranet</li><li>Booking</li></ul>
+              <p class="project__note">From the user manuals.</p>
+            </div>
+          </article>
+          <article class="project project--shots">
+            <div class="pshots pshots--pair"><figure class="pshots__main"><a href="assets/img/ripi-web-dashboard.webp" data-lightbox="ripi" data-caption="Web dashboard: harvest records and field analytics"><img src="assets/img/ripi-web-dashboard.webp" alt="RIPI web dashboard with harvest record table and field analytics chart" loading="lazy" decoding="async" width="1253" height="613"></a><figcaption>Web dashboard: harvest records and field analytics</figcaption></figure><figure class="pshots__phone"><a href="assets/img/ripi-mobile-home.webp" data-lightbox="ripi" data-caption="Mobile app home"><img src="assets/img/ripi-mobile-home.webp" alt="RIPI mobile app home with harvesting, loose picking, CPPC, counter, inventory and order" loading="lazy" decoding="async" width="346" height="769"></a><figcaption>Mobile app home</figcaption></figure><figure class="pshots__phone"><a href="assets/img/ripi-product-catalog.webp" data-lightbox="ripi" data-caption="Mobile app product catalogue"><img src="assets/img/ripi-product-catalog.webp" alt="RIPI mobile app product catalogue screen" loading="lazy" decoding="async" width="300" height="604"></a><figcaption>Mobile app product catalogue</figcaption></figure></div>
+            <div class="project__body">
+              <p class="project__meta">Plantation &middot; Rompin, Pahang</p>
+              <h3>RIPI Inventory &amp; Supply Chain System</h3>
+              <p>Plantation and estate system for a pineapple producer in Rompin, Pahang, with a mobile app. Modules for harvesting, inventory, supply chain and sales orders, plus QR codes for fields, blocks and storage.</p>
+              
+              <ul class="tags"><li>Web</li><li>Mobile app</li><li>QR code</li></ul>
+              <p class="project__note">From the user manual; personal data and amounts blurred.</p>
+            </div>
+          </article>
+          <article class="project project--shots project--wide">
+            <div class="pshots"><figure class="pshots__main"><a href="assets/img/tmbms-dashboard.webp" data-lightbox="tmbms" data-caption="Web dashboard and management menu"><img src="assets/img/tmbms-dashboard.webp" alt="TMBMS web dashboard with management menu for employees, leaves, claims, overtime and shift work" loading="lazy" decoding="async" width="1286" height="736"></a><figcaption>Web dashboard and management menu</figcaption></figure><figure><a href="assets/img/tmbms-leave-list.webp" data-lightbox="tmbms" data-caption="Leave list with approval status"><img src="assets/img/tmbms-leave-list.webp" alt="TMBMS leave list with leave type, dates and approval status" loading="lazy" decoding="async" width="940" height="559"></a><figcaption>Leave list with approval status</figcaption></figure><figure><a href="assets/img/tmbms-claims.webp" data-lightbox="tmbms" data-caption="Claim applications"><img src="assets/img/tmbms-claims.webp" alt="TMBMS claim applications list with status and approved dates" loading="lazy" decoding="async" width="1122" height="632"></a><figcaption>Claim applications</figcaption></figure><figure class="pshots__phone"><a href="assets/img/tmb-leave-app.webp" data-lightbox="tmbms" data-caption="Leave Module mobile app: leave summary"><img src="assets/img/tmb-leave-app.webp" alt="TMB leave mobile app with leave balances and recent leave statuses" loading="lazy" decoding="async" width="390" height="866"></a><figcaption>Leave Module mobile app: leave summary</figcaption></figure><figure class="pshots__phone"><a href="assets/img/tmb-leave-app-apply.webp" data-lightbox="tmbms" data-caption="Leave Module mobile app: apply leave"><img src="assets/img/tmb-leave-app-apply.webp" alt="TMB leave mobile app apply-leave form" loading="lazy" decoding="async" width="370" height="822"></a><figcaption>Leave Module mobile app: apply leave</figcaption></figure><figure class="pshots__phone"><a href="assets/img/tmb-attendance-app.webp" data-lightbox="tmbms" data-caption="Attendance mobile app: clock in"><img src="assets/img/tmb-attendance-app.webp" alt="TMB attendance mobile app with clock-in button and announcements" loading="lazy" decoding="async" width="606" height="1280"></a><figcaption>Attendance mobile app: clock in</figcaption></figure></div>
+            <div class="project__body">
+              <p class="project__meta">HRMS &middot; Tanah Makmur Berhad</p>
+              <h3>TMBMS: HR System &amp; Mobile Apps</h3>
+              <p>HR management system for Tanah Makmur Berhad, with Android apps for staff. The user guides cover employees, announcements, leave, claims, attendance and shift work on the web, plus leave and attendance in the mobile apps.</p>
+              <ul class="list"><li>Leave apply, check and approve flow with statuses (pending, checked, approved, rejected, cancelled)</li><li>Claim applications with check and approval dates</li><li>Mobile clock-in / clock-out and leave application</li></ul>
+              <ul class="tags"><li>Web</li><li>Android app</li><li>HR workflows</li></ul>
+              <p class="project__note">From the user manual; personal data and amounts blurred.</p>
+            </div>
+          </article>
+          <article class="project project--shots project--wide project--compact">
+            <div class="pshots"><figure class="pshots__main pshots__solo"><a href="assets/img/seven24-devices.webp" data-lightbox="seven24" data-caption="Seven24 on desktop, tablet and phone"><img src="assets/img/seven24-devices.webp" alt="Seven24 HRMS dashboard, attendance dashboard and mobile login shown on desktop, tablet and phone" loading="lazy" decoding="async" width="959" height="712"></a><figcaption>Seven24 on desktop, tablet and phone</figcaption></figure></div>
+            <div class="project__body">
+              <p class="project__meta">HRMS &middot; Galtech System</p>
+              <h3>Seven24 HRMS</h3>
+              <p>Galtech System&rsquo;s HR management product, covering HR functions such as employee records, payroll and performance in one package, on web and mobile.</p>
+              
+              <ul class="tags"><li>Web</li><li>Mobile app</li><li>HRMS</li></ul>
+              <p class="project__note">From the product brochure.</p>
+            </div>
+          </article>
+        </div>
+
+        <h3 class="sub">More projects</h3>
+        <div class="minis">
           <article class="mini">
             <h4>Smart Attendance</h4>
             <p>Staff attendance tracking system.</p>
@@ -286,9 +349,9 @@
             <p>Web portal for KEMAS TVET.</p>
           </article>
           <article class="mini">
-            <h4>JAKOA Portal</h4>
-            <p>Portal and intranet built on WordPress.</p>
-            <ul class="tags tags--sm"><li>WordPress</li></ul>
+            <h4>Kindergarten Management System</h4>
+            <p>Enrolment, fees, attendance and billing, with Admin, Teacher and Parent roles.</p>
+            <ul class="tags tags--sm"><li>Yii2</li></ul>
           </article>
           <article class="mini mini--wide">
             <h4>LoRa Long-Range IoT</h4>
@@ -382,6 +445,13 @@
       <a href="#top">Back to top &uarr;</a>
     </div>
   </footer>
+
+  <dialog class="lightbox" id="lightbox" aria-label="Screenshot viewer">
+    <button class="lightbox__close" type="button" aria-label="Close">&times;</button>
+    <button class="lightbox__nav lightbox__prev" type="button" aria-label="Previous screenshot">&lsaquo;</button>
+    <figure><img alt=""><figcaption></figcaption></figure>
+    <button class="lightbox__nav lightbox__next" type="button" aria-label="Next screenshot">&rsaquo;</button>
+  </dialog>
 
   <script src="assets/main.js"></script>
 </body>
