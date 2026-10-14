@@ -173,7 +173,7 @@ h2{font-size:clamp(1.8rem,3.6vw,2.5rem);line-height:1.15;letter-spacing:-.025em;
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
 
-/* RAC case study */
+/* BI case study */
 .featured--case{grid-template-columns:1fr;gap:32px;align-items:start}
 .case__head{display:grid;grid-template-columns:1.5fr 1fr;gap:40px;align-items:start}
 .case__meta{font-size:.85rem;font-weight:600;color:#a5f3fc!important;letter-spacing:.02em;margin:-4px 0 14px}
@@ -254,3 +254,13 @@ h2{font-size:clamp(1.8rem,3.6vw,2.5rem);line-height:1.15;letter-spacing:-.025em;
 .hero__inner>*{min-width:0}
 .code pre{overflow-x:auto;max-width:100%}
 .lightbox{margin:auto;inset:0}
+/* EAFC gallery */
+.eafc-gallery{grid-column:1/-1;display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.eafc-gallery figure{margin:0;background:#0b1020;border:1px solid rgba(165,180,252,.2);border-radius:10px;overflow:hidden}
+.eafc-gallery a{display:block}
+.eafc-gallery img{display:block;width:100%;height:auto;aspect-ratio:16/10;object-fit:cover;object-position:top left;transition:filter .2s}
+.eafc-gallery a:hover img{filter:brightness(1.12)}
+.eafc-gallery figcaption{font-size:.74rem;line-height:1.35;color:#a5b4fc;padding:7px 9px}
+.eafc__note{font-size:.8rem;color:#94a3b8!important;margin-top:4px}
+@media (max-width:960px){.eafc-gallery{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:560px){.eafc-gallery{grid-template-columns:repeat(2,1fr)}}
