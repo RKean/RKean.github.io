@@ -1,7 +1,7 @@
 // Set these once the profiles are ready. Empty = shown as "coming soon".
 const LINKS = {
-  linkedin: "", // e.g. "https://www.linkedin.com/in/your-handle"
-  github: ""    // e.g. "https://github.com/your-handle"
+  linkedin: "https://www.linkedin.com/in/irfan-z-2168b1aa/",
+  github: "https://github.com/RKean"
 };
 
 document.querySelectorAll("[data-placeholder]").forEach((a) => {
