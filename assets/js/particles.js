@@ -37,11 +37,17 @@ function fromGlyph(px, w, h, height) {
   return () => { const i = (rnd() * n) | 0; return [(px[i * 2] - w / 2 + rnd() * 2) * k, -(px[i * 2 + 1] - h / 2 + rnd() * 2) * k, (rnd() - .5) * .22]; };
 }
 
+let GLYPH = { w: 2.9, h: 1.7, cx: 0, cy: 0 };
 function makeShapes(dust) {
   const out = [];
   // 0 hero: "IZ" initials
   const g0 = glyphPixels('IZ', '900 250px Archivo, Arial Black, Arial, sans-serif', 640, 300);
   const s0 = fromGlyph(g0, 640, 300, 2.6);
+  { // ink bounds of the initials in local units (used to fit the mobile hero glyph into free space)
+    let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; const k = 2.6 / 300;
+    for (let i = 0; i < g0.length; i += 2) { const x = g0[i], y = g0[i + 1]; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    if (x1 > x0 && y1 > y0) GLYPH = { w: (x1 - x0 + 2) * k, h: (y1 - y0 + 2) * k, cx: ((x0 + x1) / 2 - 320) * k, cy: -((y0 + y1) / 2 - 150) * k };
+  }
   out.push(i => dust[i] ? null : s0());
   // 1 stats: four bar columns on a base grid
   const hs = [1.15, 2.2, 1.55, 1.85];
@@ -64,16 +70,26 @@ function makeShapes(dust) {
   out.push(i => {
     if (dust[i]) return null;
     const r = rnd();
-    if (r < .34) { // screen bezel
+    if (r < .24) { // screen bezel
       const t = rnd() * 2 * (sw + sh); let u, v;
       if (t < sw) { u = t - sw / 2; v = 0; } else if (t < sw + sh) { u = sw / 2; v = t - sw; } else if (t < 2 * sw + sh) { u = t - sw - sh - sw / 2; v = sh; } else { u = -sw / 2; v = t - 2 * sw - sh; }
       const p = onScreen(u + gauss() * .012, v + gauss() * .012); return p;
     }
-    if (r < .66) { const q = s2(); const p = onScreen(q[0], q[1] + sh / 2); p[2] += q[2] * .3; return p; }
-    // keyboard deck: key grid + edge
-    const kx = Math.round((rnd() - .5) * 14) / 14 * 2.6, kz = Math.round(rnd() * 6) / 6 * 1.25;
-    if (rnd() < .3) { const t = rnd(); return [(t - .5) * 2.9, by - .02, .05 + 1.45 * (rnd() < .5 ? 0 : 1)]; }
-    return [kx + (rnd() - .5) * .09, by - .02, .15 + kz + (rnd() - .5) * .09];
+    if (r < .5) { const q = s2(); const p = onScreen(q[0], q[1] + sh / 2); p[2] += q[2] * .3; return p; }
+    // keyboard deck, tilted toward the camera so it reads as a surface (not an edge-on line):
+    // outlined key caps on a 13×5 grid with a space bar, a trackpad and the deck rim
+    const deck = (x, z) => [x, by - .03 - z * .58, .06 + z * .8];
+    const rect = (x0, z0, x1, z1) => { const w = x1 - x0, d = z1 - z0, t = rnd() * 2 * (w + d); let x, z;
+      if (t < w) { x = x0 + t; z = z0; } else if (t < w + d) { x = x1; z = z0 + t - w; } else if (t < 2 * w + d) { x = x1 - (t - w - d); z = z1; } else { x = x0; z = z1 - (t - 2 * w - d); }
+      return deck(x + gauss() * .006, z + gauss() * .006); };
+    const q = rnd();
+    if (q < .12) return rect(-1.45, 0, 1.45, 1.95); // deck rim
+    if (q < .2) return rect(-.46, 1.38, .46, 1.84); // trackpad
+    const KW = 2.6 / 11, KD = 1.15 / 4, row = (rnd() * 4) | 0; let c0 = (rnd() * 11) | 0, c1 = c0;
+    if (row === 3 && c0 >= 3 && c0 <= 7) { c0 = 3; c1 = 7; } // space bar
+    const x0 = -1.3 + c0 * KW + KW * .17, x1 = -1.3 + (c1 + 1) * KW - KW * .17, z0 = .1 + row * KD + KD * .2, z1 = .1 + (row + 1) * KD - KD * .2;
+    if (rnd() < .9) return rect(x0, z0, x1, z1);
+    return deck(x0 + rnd() * (x1 - x0), z0 + rnd() * (z1 - z0)); // a little fill so caps glow
   });
   // 3 skills: node network
   const nodes = []; for (let k = 0; k < 46; k++) { const t = rnd() * 6.283, u = rnd() * 2 - 1, rr = 1.05 + rnd() * .7, s = Math.sqrt(1 - u * u); nodes.push([Math.cos(t) * s * rr * 1.15, u * rr * .95, Math.sin(t) * s * rr]); }
@@ -151,7 +167,7 @@ void main(){
 }`;
 
 /* ---------- layout per shape (fraction of half-width / half-height) ---------- */
-const LAY_D = [ { x: .42, y: .02, s: 1.0, a: 1 }, { x: .38, y: -.05, s: .78, a: .62 }, { x: .44, y: .02, s: .86, a: .5 }, { x: .45, y: 0, s: 1.0, a: .85 }, { x: .5, y: 0, s: .95, a: .85 }, { x: 0, y: .02, s: 1.1, a: .75 } ];
+const LAY_D = [ { x: .42, y: .02, s: 1.0, a: 1 }, { x: .38, y: -.05, s: .78, a: .62 }, { x: .45, y: .31, s: .6, a: .72 }, { x: .45, y: 0, s: 1.0, a: .85 }, { x: .5, y: 0, s: .95, a: .85 }, { x: 0, y: .02, s: 1.1, a: .75 } ];
 const LAY_M = [ { x: .42, y: -.36, s: .62, a: .5 }, { x: 0, y: .1, s: .6, a: .45 }, { x: 0, y: .2, s: .62, a: .35 }, { x: 0, y: .15, s: .75, a: .5 }, { x: 0, y: .1, s: .7, a: .45 }, { x: 0, y: .05, s: .85, a: .45 } ];
 const sm = t => t * t * (3 - 2 * t);
 
@@ -204,8 +220,39 @@ async function init() {
     renderer.setSize(vw, vh, false); cam.aspect = vw / Math.max(1, vh); cam.updateProjectionMatrix();
     halfH = Math.tan(THREE.MathUtils.degToRad(20)) * 6; halfW = halfH * cam.aspect;
     lay = vw <= 820 ? LAY_M : LAY_D;
+    if (lay === LAY_M) fitHeroGlyph();
     anchors = secs.map((s, i) => { if (i === 0) return 0; const r = s.getBoundingClientRect(); return Math.max(0, r.top + scrollY + Math.min(r.height, vh) / 2 - vh * .62); });
     dirty = true;
+  }
+  // mobile: put the "IZ" initials in the empty space right of the facts + buttons (never behind text);
+  // fall back to the gap above the eyebrow, and only then to a faint backdrop
+  const LAY_M0 = { ...LAY_M[0] };
+  function fitHeroGlyph() {
+    const L0 = LAY_M[0]; Object.assign(L0, LAY_M0);
+    const hero = document.getElementById('top'); if (!hero) return;
+    const base = Math.min(halfH, halfW * 1.1) / 2.05, pxPerU = vw / (2 * halfW), gw = GLYPH.w * base * pxPerU, gh = GLYPH.h * base * pxPerU; // glyph px size at s=1
+    if (!(gw > 0 && gh > 0)) return;
+    const sy = scrollY, rect = el => { const r = el.getBoundingClientRect(); return { l: r.left, r: r.right, t: r.top + sy, b: r.bottom + sy }; };
+    const textRect = el => { try { const rg = document.createRange(); rg.selectNodeContents(el); const r = rg.getBoundingClientRect(); return { l: r.left, r: r.right, t: r.top + sy, b: r.bottom + sy }; } catch (e) { return rect(el); } };
+    const lis = [...hero.querySelectorAll('.hero__facts li')].map(textRect), btns = [...hero.querySelectorAll('.hero__cta .btn')].map(rect);
+    const place = (cx, cy, s, a) => { if (![cx, cy, s].every(isFinite)) return false; L0.x = (cx - vw / 2) / (vw / 2) - GLYPH.cx * s * base / halfW; L0.y = (vh / 2 - cy) / (vh / 2) - GLYPH.cy * s * base / halfH; L0.s = s; L0.a = a; return true; };
+    const M = 22, fit = .8; // margin px, and headroom for the idle sway rotation
+    // candidate column right of the buttons plus the last k fact lines; keep the one that fits the biggest glyph
+    let best = null;
+    for (let k = 0; k <= lis.length; k++) {
+      const items = btns.concat(lis.slice(lis.length - k)).filter(r => r.r > r.l); if (!items.length) continue;
+      const right = Math.max(...items.map(r => r.r)), top = Math.min(...items.map(r => r.t)) - (k ? 0 : M), bot = Math.max(...items.map(r => r.b));
+      const aw = vw - M - (right + M), ah = Math.min(bot, vh) - top, sc = Math.min(.62, aw * fit / gw, ah * fit / gh);
+      if (aw > 0 && ah > 0 && bot <= vh + 40 && (!best || sc > best.sc)) best = { sc, cx: right + M + aw / 2, cy: top + ah / 2 };
+    }
+    if (best && best.sc * gw >= 100 && place(best.cx, best.cy, best.sc, .8)) return;
+    const eb = hero.querySelector('.eyebrow'), hd = document.querySelector('header');
+    if (eb) {
+      const t0 = hd ? hd.getBoundingClientRect().bottom + sy : 0, t1 = rect(eb).t, ah = t1 - t0 - 2 * M;
+      const s = Math.min(.5, ah * fit / gh, (vw - 2 * M) * fit / gw);
+      if (ah >= 56 && s * gw >= 90 && place(vw / 2, t0 + M + ah / 2, s, .7)) return;
+    }
+    L0.a = .3; // faint backdrop as a last resort
   }
   function targetP() {
     const y = scrollY;
