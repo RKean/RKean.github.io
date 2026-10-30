@@ -41,7 +41,7 @@ let GLYPH = { w: 2.9, h: 1.7, cx: 0, cy: 0 };
 function makeShapes(dust) {
   const out = [];
   // 0 hero: "IZ" initials
-  const g0 = glyphPixels('IZ', '900 250px Archivo, Arial Black, Arial, sans-serif', 640, 300);
+  const g0 = glyphPixels('IZ', '700 250px Fredoka, "Arial Rounded MT Bold", Arial, sans-serif', 640, 300);
   const s0 = fromGlyph(g0, 640, 300, 2.6);
   { // ink bounds of the initials in local units (used to fit the mobile hero glyph into free space)
     let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; const k = 2.6 / 300;
@@ -49,21 +49,25 @@ function makeShapes(dust) {
     if (x1 > x0 && y1 > y0) GLYPH = { w: (x1 - x0 + 2) * k, h: (y1 - y0 + 2) * k, cx: ((x0 + x1) / 2 - 320) * k, cy: -((y0 + y1) / 2 - 150) * k };
   }
   out.push(i => dust[i] ? null : s0());
-  // 1 stats: four bar columns on a base grid
-  const hs = [1.15, 2.2, 1.55, 1.85];
+  // 1 stats: an original round creature (big eyes, pointy ears, curly leaf tail, sprout on top)
+  const ell = (cx, cy, cz, rx, ry, rz) => { const u = rnd() * 2 - 1, t = rnd() * 6.283, q = Math.sqrt(1 - u * u); return [cx + Math.cos(t) * q * rx, cy + u * ry, cz + Math.sin(t) * q * rz]; };
+  const disc = (cx, cy, cz, r) => { const a = rnd() * 6.283, rr = Math.sqrt(rnd()) * r; return [cx + Math.cos(a) * rr, cy + Math.sin(a) * rr, cz]; };
   out.push(i => {
     if (dust[i]) return null;
     const r = rnd();
-    if (r < .18) return [(rnd() - .5) * 3.6, -1.1, (rnd() - .5) * 1.2];
-    const b = (rnd() * 4) | 0, w = .5, cx = (b - 1.5) * .85, h = hs[b];
-    const face = rnd();
-    let x = (rnd() - .5) * w, y = rnd() * h, z = (rnd() - .5) * w;
-    if (face < .5) { if (rnd() < .5) x = Math.sign(x || 1) * w / 2; else z = Math.sign(z || 1) * w / 2; }
-    else if (face < .65) y = h;
-    return [cx + x, -1.1 + y, z];
+    if (r < .3) return ell(0, -.55, 0, .95, .78, .72); // body
+    if (r < .56) return ell(0, .5, .05, .78, .68, .66); // head
+    if (r < .68) { const sd = rnd() < .5 ? -1 : 1, t = rnd(), w = (1 - t) * .26 * Math.sqrt(rnd()), a = rnd() * 6.283; // ears (cones)
+      return [sd * (.42 + t * .38) + Math.cos(a) * w, 1.02 + t * .78 + Math.sin(a) * w * .4, Math.sin(a) * w * .5]; }
+    if (r < .78) { const t = rnd(), a = t * 4.2, R0 = .55 * (1 - t * .55); // curly tail
+      return [1.05 + Math.cos(a - 1.2) * R0 + gauss() * .04, -.75 + t * .6 + Math.sin(a - 1.2) * R0 + gauss() * .04, -.25 + gauss() * .04]; }
+    if (r < .9) { const sd = rnd() < .5 ? -1 : 1; return rnd() < .8 ? disc(sd * .28, .52, .72, .16) : disc(sd * .23, .6, .74, .05); } // eyes + shine
+    if (r < .94) { const sd = rnd() < .5 ? -1 : 1, t = rnd(); return [sd * .4 * Math.sin(t * 3.14) * (.5 + .5 * rnd()), 1.2 + t * .38, 0]; } // sprout leaves
+    if (r < .97) { const t = rnd() * 3.14; return [Math.cos(t) * .14, .22 - Math.sin(t) * .07, .7]; } // smile
+    const sd = rnd() < .5 ? -1 : 1; return ell(sd * .48, -1.28, .2, .22, .1, .2); // feet
   });
   // 2 works: laptop with a </> glyph on screen
-  const g2 = glyphPixels('</>', '800 170px JetBrains Mono, Consolas, monospace', 520, 220);
+  const g2 = glyphPixels('</>', '700 170px Fredoka, "Arial Rounded MT Bold", Arial, sans-serif', 520, 220);
   const s2 = fromGlyph(g2, 520, 220, 1.05);
   const tilt = -0.22, sw = 2.7, sh = 1.7, by = -.62;
   const onScreen = (u, v) => [u, by + v * Math.cos(tilt), v * Math.sin(tilt)]; // leans back, away from camera
@@ -102,11 +106,16 @@ function makeShapes(dust) {
     const [a, b] = edges[(rnd() * edges.length) | 0], t = rnd(), A = nodes[a], B = nodes[b];
     return [A[0] + (B[0] - A[0]) * t + gauss() * .008, A[1] + (B[1] - A[1]) * t + gauss() * .008, A[2] + (B[2] - A[2]) * t + gauss() * .008];
   });
-  // 4 experience: double helix
+  // 4 experience: a growing vine (double helix) with leaves along it
   out.push(i => {
     if (dust[i]) return null;
-    const turns = 2.4, H = 3.6, R = .72;
-    if (rnd() < .3) { const k = (rnd() * 30) | 0, t = (k + .5) / 30, a = t * turns * 6.283, s = rnd() * 2 - 1; return [Math.cos(a) * R * s, (t - .5) * H, Math.sin(a) * R * s]; }
+    const turns = 2.2, H = 3.6, R = .72;
+    if (rnd() < .38) { // leaves: almond outline + midrib, pointing out from the strand
+      const k = (rnd() * 22) | 0, t = (k + .5) / 22, a = t * turns * 6.283 + (k % 2 ? Math.PI : 0);
+      const bx = Math.cos(a) * R, bz = Math.sin(a) * R, by = (t - .5) * H, ox = Math.cos(a), oz = Math.sin(a);
+      const L = .5, u = rnd(), side = rnd() < .5 ? -1 : 1, w = rnd() < .7 ? Math.sin(u * Math.PI) * .16 * side : 0;
+      return [bx + ox * u * L - oz * w * .3, by + u * L * .35 + w, bz + oz * u * L + ox * w * .3];
+    }
     const t = rnd(), a = t * turns * 6.283 + (rnd() < .5 ? 0 : Math.PI);
     return [Math.cos(a) * R + gauss() * .025, (t - .5) * H + gauss() * .02, Math.sin(a) * R + gauss() * .025];
   });
@@ -151,10 +160,15 @@ void main(){
   float sz = uSize * uPR * (.55 + aRnd.w * .9) * (6. / d) * (1. + tr * .6);
   gl_PointSize = clamp(sz, 1., 48.);
   gl_Position = projectionMatrix * mv;
-  float white = step(.88, aRnd.x);
-  vec3 red = vec3(1., .0, .2) * (.65 + aRnd.z * .55);
-  vCol = mix(red, vec3(1., .92, .94), white);
-  vA = uAlpha * 1.55 * (.45 + .55 * aRnd.y) * (1. - tr * .35) * clamp(1.4 - d * .12, .25, 1.);
+  float w = aRnd.x;
+  vec3 cyan = mix(vec3(.0, .62, .74), vec3(.10, .83, .90), aRnd.z);
+  vec3 col = cyan;
+  col = mix(col, vec3(.02, .38, .52), step(.62, w) * step(w, .74));   // deep teal for contrast
+  col = mix(col, vec3(1., .99, .96), step(.86, w));                    // soft white sparkle
+  col = mix(col, vec3(1., .80, .25), step(.955, w));                   // sun yellow
+  col = mix(col, vec3(.42, .80, .37), step(.93, w) * step(w, .955));   // grass green
+  vCol = col;
+  vA = uAlpha * 1.7 * (.55 + .45 * aRnd.y) * (1. - tr * .35) * clamp(1.4 - d * .12, .25, 1.);
 }`;
 const FRAG = `
 precision mediump float;
@@ -163,7 +177,8 @@ void main(){
   vec2 c = gl_PointCoord - .5; float r = dot(c, c) * 4.;
   float a = clamp(1. - r, 0., 1.); a *= a;
   if (a < .01) discard;
-  gl_FragColor = vec4(vCol * a * clamp(vA, 0., 1.), 1.);
+  float al = a * clamp(vA, 0., 1.);
+  gl_FragColor = vec4(vCol, al);
 }`;
 
 /* ---------- layout per shape (fraction of half-width / half-height) ---------- */
@@ -175,13 +190,13 @@ async function init() {
   if (!canvas || !webglOK()) { root.classList.add('no-gl'); return; }
   // wait (briefly) for the display fonts so the glyphs sample the real typeface
   if (document.fonts && document.fonts.load) {
-    await Promise.race([Promise.all([document.fonts.load('900 250px Archivo'), document.fonts.load('800 170px "JetBrains Mono"')]).catch(() => {}), new Promise(r => setTimeout(r, 1800))]);
+    await Promise.race([Promise.all([document.fonts.load('700 250px Fredoka')]).catch(() => {}), new Promise(r => setTimeout(r, 1800))]);
   }
   let renderer;
   try {
-    renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: false, powerPreference: 'high-performance', preserveDrawingBuffer: false });
+    renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: true, premultipliedAlpha: true, powerPreference: 'high-performance', preserveDrawingBuffer: false });
   } catch (e) { root.classList.add('no-gl'); return; }
-  renderer.setClearColor(0x000000, 1);
+  renderer.setClearColor(0x000000, 0); // transparent: the CSS sky shows through
   const PR = Math.min(window.devicePixelRatio || 1, MOBILE ? 1.5 : 1.75);
   renderer.setPixelRatio(PR);
 
@@ -208,8 +223,8 @@ async function init() {
   geo.setAttribute('aRnd', new THREE.BufferAttribute(r4, 4));
   geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 10);
 
-  const U = { uP: { value: 0 }, uTime: { value: 0 }, uSize: { value: MOBILE ? 2.7 : 2.3 }, uPR: { value: PR }, uMotion: { value: RM ? 0 : 1 }, uAlpha: { value: 1 }, uMouse: { value: new THREE.Vector2() } };
-  const mat = new THREE.ShaderMaterial({ uniforms: U, vertexShader: VERT, fragmentShader: FRAG, transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending });
+  const U = { uP: { value: 0 }, uTime: { value: 0 }, uSize: { value: MOBILE ? 3.0 : 2.6 }, uPR: { value: PR }, uMotion: { value: RM ? 0 : 1 }, uAlpha: { value: 1 }, uMouse: { value: new THREE.Vector2() } };
+  const mat = new THREE.ShaderMaterial({ uniforms: U, vertexShader: VERT, fragmentShader: FRAG, transparent: true, depthWrite: false, depthTest: false, blending: THREE.NormalBlending });
   const pts = new THREE.Points(geo, mat); pts.frustumCulled = false; scene.add(pts);
 
   // scroll → target progress

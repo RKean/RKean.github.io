@@ -63,13 +63,13 @@ const html = `<!DOCTYPE html>
 <meta name="twitter:title" content="${e(P.name)} | ${e(P.role)}">
 <meta name="twitter:description" content="Laravel, PHP 8, MySQL, REST APIs, RBAC and audit trails for government and enterprise systems.">
 <meta name="twitter:image" content="https://rkean.github.io/assets/og-image.png">
-<meta name="theme-color" content="#000000">
-<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#bfeaff">
+<meta name="color-scheme" content="light">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/style.css">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400..700&family=Nunito:wght@400..900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css?v=sky1">
 <link rel="modulepreload" href="assets/vendor/three.module.min.js">
 <script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@type': 'Person', name: P.name, jobTitle: P.role, email: 'mailto:' + P.email, telephone: '+60166012962', address: { '@type': 'PostalAddress', addressLocality: 'Kuala Lumpur', addressCountry: 'MY' }, url: 'https://rkean.github.io/', sameAs: [P.linkedin, P.github], knowsAbout: ['Laravel', 'PHP', 'MySQL', 'REST APIs', 'RBAC', 'Audit trails'] })}</script>
 <script>document.documentElement.classList.add('js');if(matchMedia('(prefers-reduced-motion: reduce)').matches)document.documentElement.classList.add('rm');</script>
@@ -79,7 +79,7 @@ const html = `<!DOCTYPE html>
 <div class="bg" aria-hidden="true"><div class="bg__fallback"></div><canvas id="gl"></canvas><div class="bg__shade"></div></div>
 
 <header class="nav">
-  <a class="brand" href="#top" aria-label="${e(P.name)}, back to top"><span class="brand__mark">IZ</span><span class="brand__name mono">IRFAN <sup>©</sup>26’</span></a>
+  <a class="brand" href="#top" aria-label="${e(P.name)}, back to top"><span class="brand__mark">IZ</span><span class="brand__name mono">Irfan <sup>©</sup>26’</span></a>
   <nav aria-label="Primary"><ul class="nav__links mono">
     <li><a href="#works">Works</a></li><li><a href="#skills">Skills</a></li><li><a href="#experience">Experience</a></li><li><a href="#contact">Contact</a></li>
   </ul></nav>
@@ -97,7 +97,7 @@ const html = `<!DOCTYPE html>
       <li>5+ yrs experience</li><li>Government &amp; enterprise systems</li><li>Laravel · PHP 8 · MySQL</li>
     </ul>
     <div class="hero__cta"><a class="btn" href="#works">View selected works</a><a class="btn btn--ghost" href="mailto:${P.email}">${P.email}</a></div>
-    <a class="scroll-hint mono" href="#stats" aria-label="Scroll to stats"><span></span>SCROLL</a>
+    <a class="scroll-hint mono" href="#stats" aria-label="Scroll to stats"><span></span>Scroll</a>
   </section>
 
   <section class="stats" id="stats" data-shape="1" aria-label="Key figures">
@@ -164,7 +164,7 @@ ${P.experience.map(x => `      <li class="tl__item" data-reveal><span class="tl_
 </dialog>
 
 <script src="assets/js/main.js" defer></script>
-<script type="module" src="assets/js/particles.js?v=kb1"></script>
+<script type="module" src="assets/js/particles.js?v=sky1"></script>
 </body>
 </html>
 `;
