@@ -204,7 +204,7 @@ async function init() {
     renderer.setSize(vw, vh, false); cam.aspect = vw / Math.max(1, vh); cam.updateProjectionMatrix();
     halfH = Math.tan(THREE.MathUtils.degToRad(20)) * 6; halfW = halfH * cam.aspect;
     lay = vw <= 820 ? LAY_M : LAY_D;
-    anchors = secs.map((s, i) => { if (i === 0) return 0; const r = s.getBoundingClientRect(); return Math.max(0, r.top + scrollY + Math.min(r.height, vh) / 2 - vh / 2); });
+    anchors = secs.map((s, i) => { if (i === 0) return 0; const r = s.getBoundingClientRect(); return Math.max(0, r.top + scrollY + Math.min(r.height, vh) / 2 - vh * .62); });
     dirty = true;
   }
   function targetP() {
