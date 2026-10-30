@@ -164,7 +164,7 @@ ${P.experience.map(x => `      <li class="tl__item" data-reveal><span class="tl_
 </dialog>
 
 <script src="assets/js/main.js" defer></script>
-<script type="module" src="assets/js/particles.js"></script>
+<script type="module" src="assets/js/particles.js?v=kb1"></script>
 </body>
 </html>
 `;
