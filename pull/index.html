@@ -288,7 +288,7 @@ function render(){
 let resTimer=null;
 function renderResults(setup,assigned,full){
   const box=$('resBox');
-  if(!full||!room.list){box.classList.add('hide');return;}
+  if(!full||!room.list||room.pulling){box.classList.add('hide');return;}
   // wait until the last claim has settled so every phone shows the same final list
   const last=Math.max(...assigned.map(r=>r.time));
   const age=Date.now()/1000-last;
