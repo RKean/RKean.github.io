@@ -115,13 +115,8 @@ footer a{color:var(--cyd)}
         <div class="big pop" id="pNum">?</div>
         <div id="pWho" class="hint"></div>
         <div id="pMatch" class="match hide"></div>
-        <p class="hint">Jangan tunjuk pada orang lain 🤫 / Keep it secret</p>
+        <p class="hint">Hanya anda nampak ini 🤫 / Only you can see this</p>
       </div>
-    </div>
-    <div class="card hide" id="resBox">
-      <h2>🎉 Keputusan penuh <small>/ Full results</small></h2>
-      <div class="hint">Semua sudah cabut / Everyone has pulled</div>
-      <ul class="list" id="resList"></ul>
     </div>
     <div class="card hide" id="leaderBox">
       <h2>Panel ketua <small>/ Leader</small></h2>
@@ -133,9 +128,9 @@ footer a{color:var(--cyd)}
       <button class="small ghost" id="btnQr">Tunjuk QR · Show QR</button>
       <img id="qr" class="qr hide" alt="QR code">
       <div class="hint" style="margin-top:8px">Kod / code: <b id="lCode"></b> · bilik tamat ±12 jam</div>
-      <label>Siapa sudah cabut <small>/ Who pulled</small></label>
+      <label>Siapa sudah cabut <small>/ Who pulled (nombor rahsia)</small></label>
       <ul class="list" id="lList"></ul>
-      <button class="sun" id="btnReveal">👀 Dedah semua · Reveal all</button>
+      <div class="hint" style="margin-top:6px">🤫 Hanya orang yang cabut tahu nombor &amp; pasangan sendiri. Ketua pun tak nampak. / Only each puller sees their own number &amp; match.</div>
       <button class="small ghost" id="btnNew">+ Cabutan baru · New pull</button>
       <div class="hint" style="margin-top:8px">Simpan pautan ketua ini untuk buka panel semula. / Bookmark this leader link.</div>
     </div>
@@ -228,22 +223,37 @@ function connect(){
   const es=new EventSource(SRV+room.topic+'/sse?since=all');
   room.es=es;
   es.onmessage=ev=>{try{addEvents([JSON.parse(ev.data)])}catch(e){}};
-  es.onerror=()=>{$('pStatus').textContent='Menyambung semula… / Reconnecting…';};
+  es.onerror=()=>{if(es.readyState===2&&room&&room.es===es)setTimeout(()=>{if(room&&room.es===es)connect();},3000);};
   es.onopen=()=>{if(room.state&&room.state.setup)$('pStatus').textContent='';};
 }
 
 async function openRoom(code,k){
   show('vLoad');$('loadMsg').textContent='Memuat… / Loading…';
-  room={code,topic:PREFIX+code,k,isLeader:false,events:new Map(),list:null,state:null,pulling:false,revealed:false};
+  room={code,topic:PREFIX+code,k,isLeader:false,events:new Map(),list:null,state:null,pulling:false,settledMine:false,waitMatch:false,lastSync:Date.now()};
   if(seed&&seed.topic===room.topic){addEvents([seed]);seed=null;}
   connect(); // SSE since=all replays the log, then streams live
   for(let i=0;i<40&&!(room.state&&room.state.setup);i++)await new Promise(r=>setTimeout(r,200));
   if(!(room.state&&room.state.setup)){try{addEvents(await pollAll(room.topic));}catch(e){}}
   if(!room.state||!room.state.setup){room.es.close();$('loadMsg').innerHTML='Bilik tak dijumpai atau sudah tamat. / Room not found or expired.<br><a href="'+baseUrl+'">Buat baru / New</a>';return;}
   if(k)room.isLeader=(await sha(k))===room.state.setup.lk;
+  room.settledMine=true; // full log already replayed, so an existing claim on this phone is final
   show('vPull');render();
-  if(room.isLeader){const rc=room.code;const t=setInterval(async()=>{if(!room||room.code!==rc){clearInterval(t);return;}try{addEvents(await pollAll(room.topic));}catch(e){}},60000);} // leader resync
+  // safety resync: phones that sleep/lock can miss live events; catch up from the log
+  const rc=room.code;const t=setInterval(()=>{if(!room||room.code!==rc){clearInterval(t);return;}if(needSync())resync();},10000);
 }
+
+// keep polling while this phone still waits for something (own number, partner) or the live stream is down
+function needSync(){
+  const st=room.state;if(!st||!st.setup)return true;
+  const full=st.assigned.length>=st.setup.n;
+  if(room.isLeader&&!full)return true;
+  const mine=st.byDev.get(DEV);
+  if(mine&&room.waitMatch)return true;
+  if(!full&&!mine&&(!room.es||room.es.readyState!==1))return true;
+  return Date.now()-room.lastSync>60000&&!full;
+}
+async function resync(){if(!room||room.syncing)return;const r=room;r.syncing=true;try{addEvents(await pollAll(r.topic));r.lastSync=Date.now();}catch(e){}r.syncing=false;if(room===r&&r.es&&r.es.readyState===2)connect();}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&room&&room.state)resync();});
 
 function render(){
   if(!room||!room.state||!room.state.setup)return;
@@ -253,15 +263,17 @@ function render(){
   const full=assigned.length>=setup.n;
   const saved=JSON.parse(localStorage.getItem('rkpull.'+room.code)||'null');
   if(!room.pulling){
-    if(mine&&(saved||Date.now()/1000-mine.time>WAIT_MS/1000)){
+    if(mine&&(saved||room.settledMine)){
       $('pForm').classList.add('hide');$('pWait').classList.add('hide');$('pResult').classList.remove('hide');
       const n=numOf(mine);
       if($('pNum').textContent!==n){$('pNum').textContent=n;$('pNum').classList.remove('pop');void $('pNum').offsetWidth;$('pNum').classList.add('pop');}
       $('pWho').textContent=mine.name;
-      if(!saved)localStorage.setItem('rkpull.'+room.code,JSON.stringify({name:mine.name,n}));
       const same=room.list?room.list.filter(x=>x===n).length:1;
       const mates=assigned.filter(r=>r.dev!==DEV&&numOf(r)===n).map(r=>r.name);
-      if(same>1){$('pMatch').classList.remove('hide');$('pMatch').innerHTML=mates.length?'🤝 Pasangan anda / Your match: '+mates.map(esc).join(', '):'⏳ Pasangan anda belum cabut / Your match hasn\'t pulled yet';}
+      room.waitMatch=same>1&&mates.length<same-1;
+      const rec={name:mine.name,n,mates};
+      if(!saved||saved.n!==n||JSON.stringify(saved.mates||[])!==JSON.stringify(mates))localStorage.setItem('rkpull.'+room.code,JSON.stringify(rec));
+      if(same>1){$('pMatch').classList.remove('hide');$('pMatch').innerHTML=(mates.length?'🤝 Pasangan anda / Your match: <b>'+mates.map(esc).join(', ')+'</b>':'')+(room.waitMatch?(mates.length?'<br>':'')+'⏳ Pasangan anda belum cabut, akan muncul di sini. / Your match hasn\'t pulled yet, it will appear here.':'');}
       else $('pMatch').classList.add('hide');
       $('pStatus').textContent='';
     }else if(full&&!mine){
@@ -273,33 +285,14 @@ function render(){
       if(room.isLeader&&!$('pName').value)$('pName').placeholder='Nama (ketua pun boleh cabut)';
     }
   }
-  renderResults(setup,assigned,full);
   if(room.isLeader){
     $('leaderBox').classList.remove('hide');
     $('lCount').textContent=assigned.length+' / '+setup.n;
     $('lBar').style.width=(100*assigned.length/setup.n)+'%';
     const link=baseUrl+'#r='+room.code;
     $('shareUrl').value=link;$('lCode').textContent=room.code;
-    $('lList').innerHTML=assigned.map(r=>'<li><span>'+(r.slot+1)+'. '+esc(r.name)+'</span>'+(room.revealed?'<b>'+esc(numOf(r))+'</b>':'<span>🔒</span>')+'</li>').join('')||'<li><span class="hint">Belum ada / none yet</span></li>';
-    $('btnReveal').textContent=room.revealed?'🙈 Sorok · Hide':'👀 Dedah semua · Reveal all';
+    $('lList').innerHTML=assigned.map(r=>'<li><span>'+(r.slot+1)+'. '+esc(r.name)+'</span><span>🔒</span></li>').join('')||'<li><span class="hint">Belum ada / none yet</span></li>';
   }
-}
-
-let resTimer=null;
-function renderResults(setup,assigned,full){
-  const box=$('resBox');
-  if(!full||!room.list||room.pulling){box.classList.add('hide');return;}
-  // wait until the last claim has settled so every phone shows the same final list
-  const last=Math.max(...assigned.map(r=>r.time));
-  const age=Date.now()/1000-last;
-  if(age<WAIT_MS/1000){box.classList.add('hide');clearTimeout(resTimer);resTimer=setTimeout(render,(WAIT_MS/1000-age)*1000+300);return;}
-  const groups=new Map();
-  for(const r of assigned){const n=numOf(r);if(!groups.has(n))groups.set(n,[]);groups.get(n).push(r.name);}
-  const keys=[...groups.keys()].sort((a,b)=>{const x=+a,y=+b;return (isNaN(x)||isNaN(y))?String(a).localeCompare(String(b)):x-y;});
-  const mine=room.state.byDev.get(DEV),myN=mine?numOf(mine):null;
-  const html=keys.map(k=>'<li'+(k===myN?' style="background:#fff7cf"':'')+'><b>'+esc(k)+'</b><span style="text-align:right">'+groups.get(k).map(esc).join(' &amp; ')+'</span></li>').join('');
-  if($('resList').innerHTML!==html)$('resList').innerHTML=html;
-  box.classList.remove('hide');
 }
 
 async function doPull(){
@@ -317,10 +310,9 @@ async function doPull(){
     await new Promise(r=>setTimeout(r,WAIT_MS));
     addEvents(await pollAll(room.topic));
   }catch(e){$('pErr').textContent='Gagal / Failed: '+e.message;}
-  room.pulling=false;$('pWait').classList.add('hide');
+  room.pulling=false;room.settledMine=true;$('pWait').classList.add('hide');
   const mine=room.state.byDev.get(DEV);
-  if(mine)localStorage.setItem('rkpull.'+room.code,JSON.stringify({name:mine.name,n:numOf(mine)}));
-  else if(!$('pErr').textContent)$('pErr').textContent='Maaf, nombor habis. / Sorry, none left.';
+  if(!mine&&!$('pErr').textContent)$('pErr').textContent='Maaf, nombor habis. / Sorry, none left.';
   render();
 }
 
@@ -357,14 +349,13 @@ $('pName').addEventListener('keydown',e=>{if(e.key==='Enter')doPull();});
 $('btnCopy').onclick=async()=>{try{await navigator.clipboard.writeText($('shareUrl').value);$('btnCopy').textContent='✓';}catch(e){$('shareUrl').select();document.execCommand('copy');$('btnCopy').textContent='✓';}setTimeout(()=>$('btnCopy').textContent='Salin',1500);};
 $('btnShare').onclick=()=>{const url=$('shareUrl').value,t='Jom cabut nombor rahsia 🎲 '+url;if(navigator.share)navigator.share({title:'Cabutan Rahsia',text:'Jom cabut nombor rahsia 🎲',url}).catch(()=>{});else window.open('https://wa.me/?text='+encodeURIComponent(t),'_blank');};
 $('btnQr').onclick=()=>{const q=$('qr');if(q.classList.contains('hide')){q.src='https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=0&data='+encodeURIComponent($('shareUrl').value);q.classList.remove('hide');}else q.classList.add('hide');};
-$('btnReveal').onclick=()=>{if(!room.revealed&&!confirm('Dedah semua nombor di skrin ini? / Reveal all numbers on this screen?'))return;room.revealed=!room.revealed;render();};
 $('btnNew').onclick=()=>{location.hash='';};
 
 function route(){
   const {r,k}=hashParams();
   if(room&&room.es){room.es.close();}
   room=null;
-  $('pForm').classList.remove('hide');$('pResult').classList.add('hide');$('pWait').classList.add('hide');$('leaderBox').classList.add('hide');$('resBox').classList.add('hide');$('qr').classList.add('hide');
+  $('pForm').classList.remove('hide');$('pResult').classList.add('hide');$('pWait').classList.add('hide');$('leaderBox').classList.add('hide');$('qr').classList.add('hide');
   $('pName').value=localStorage.getItem('rkpull.name')||'';
   if(r)openRoom(r,k);else{show('vHome');updHints();}
 }
