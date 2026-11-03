@@ -221,7 +221,7 @@ function computeLog(evMap){
       const rec={dev:m.dev,name:String(m.name||'?').slice(0,30),slot:assigned.length,time:e.time,id:e.id};
       assigned.push(rec);byDev.set(m.dev,rec);if(assigned.length>=setup.n)fin=true;
     }else if(m.t==='cfg'&&typeof m.f==='string')cfg=m;
-    else if(m.t==='close'&&assigned.length>=1){fin=true;closed=true;}
+    else if(m.t==='close'&&assigned.length>=1){fin=true;closed=true;if(m.cfg&&evMap.has(m.cfg)){const c=evMap.get(m.cfg).m;if(c.t==='cfg'&&typeof c.f==='string')cfg=c;}}
   }
   return {setup,assigned,byDev,cfg,fin,closed};
 }
@@ -424,7 +424,7 @@ async function saveCfg(){
     for(const c of prev){let r=room.prevFound&&room.prevFound.get(c);if(!r){try{r=await roomPairs(c,3);}catch(e){r=null;}}if(r&&r.ok)pairs.push(...r.pairs);else notFound.push(c);}
     const seen=new Set(),uniq=[];for(const p of pairs){const k=pairKey(p[0],p[1]);if(p[0]&&p[1]&&normName(p[0])!==normName(p[1])&&!seen.has(k)){seen.add(k);uniq.push([String(p[0]).slice(0,30),String(p[1]).slice(0,30)]);}}
     const f=obf({pairs:uniq,prev,txt},room.code);if(f.length>3800)throw new Error('Terlalu banyak pasangan / too many pairs');
-    addEvents([await publish(room.topic,{t:'cfg',f})]);
+    const cm=await publish(room.topic,{t:'cfg',f});room.lastCfgId=cm.id;addEvents([cm]);
     if(notFound.length)$('lCfgMsg').innerHTML+='<br>Bilik tak dijumpai / not found: '+notFound.map(esc).join(', ');
     btn.disabled=false;return true;
   }catch(e){$('lCfgMsg').textContent='Gagal / Failed: '+e.message;btn.disabled=false;return false;}
@@ -434,7 +434,8 @@ async function closeRoom(){
   if(!confirm('Padankan '+n+' orang sekarang? Lepas ini tiada siapa boleh cabut lagi.\nMatch '+n+' people now? No more pulls after this.'))return;
   $('btnClose').disabled=true;
   if(!(await saveCfg())){$('btnClose').disabled=false;return;}
-  try{addEvents([await publish(room.topic,{t:'close'})]);setTimeout(resync,2500);}catch(e){$('lCfgMsg').textContent='Gagal / Failed: '+e.message;$('btnClose').disabled=false;}
+  await new Promise(r=>setTimeout(r,1200)); // let the saved settings land first (server time is per second)
+  try{addEvents([await publish(room.topic,{t:'close',cfg:room.lastCfgId})]);setTimeout(resync,2500);}catch(e){$('lCfgMsg').textContent='Gagal / Failed: '+e.message;$('btnClose').disabled=false;}
 }
 
 async function doPull(){
