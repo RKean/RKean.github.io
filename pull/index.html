@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="ms">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Cabutan Rahsia · Invisible Pull</title>
+<meta name="description" content="Cabutan nombor rahsia: ketua masukkan nombor, setiap orang cabut satu di telefon sendiri.">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#19d3e6">
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500..700&family=Nunito:wght@400..900&display=swap" rel="stylesheet">
+<style>
+:root{--cy:#19d3e6;--cy2:#00c2d8;--cyd:#007a8c;--ink:#12324a;--mute:#5d7a8c;--sky:#bfeaff;--sky2:#e9f8ff;--card:#fffefa;--sun:#ffd447;--grass:#6cc85a;--red:#e2574c}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:Nunito,system-ui,sans-serif;color:var(--ink);background:linear-gradient(180deg,var(--sky) 0%,var(--sky2) 60%,#fffdf6 100%);min-height:100vh;min-height:100dvh;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+main{max-width:460px;margin:0 auto;padding:18px 16px 40px}
+h1{font-family:Fredoka,sans-serif;font-size:28px;margin:6px 0 2px;letter-spacing:.2px}
+h1 span{color:var(--cyd)}
+.sub{color:var(--mute);margin:0 0 16px;font-size:14px}
+.card{background:var(--card);border:2.5px solid var(--ink);border-radius:20px;padding:16px;margin:0 0 14px;box-shadow:0 5px 0 var(--ink)}
+h2{font-family:Fredoka,sans-serif;font-size:19px;margin:0 0 10px}
+label{display:block;font-weight:800;font-size:14px;margin:10px 0 5px}
+small,.hint{color:var(--mute);font-size:12.5px;font-weight:600}
+input[type=text],input[type=number],textarea{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:2px solid var(--ink);border-radius:12px;background:#fff;color:var(--ink)}
+textarea{min-height:76px;resize:vertical}
+input:focus,textarea:focus{outline:3px solid var(--cy);outline-offset:1px}
+.row{display:flex;gap:8px;align-items:center}
+.row>*{flex:1}
+.seg{display:flex;border:2px solid var(--ink);border-radius:12px;overflow:hidden;margin-top:4px}
+.seg button{flex:1;border:0;border-radius:0;box-shadow:none;background:#fff;color:var(--ink);padding:9px 6px;font-size:14px;margin:0}
+.seg button.on{background:var(--cy);}
+.chk{display:flex;gap:8px;align-items:center;font-weight:700;font-size:14px;margin-top:10px}
+.chk input{width:20px;height:20px;accent-color:var(--cyd)}
+button,.btn{display:inline-block;font-family:Fredoka,sans-serif;font-weight:600;font-size:18px;border:2.5px solid var(--ink);border-radius:14px;padding:12px 16px;background:var(--cy);color:var(--ink);box-shadow:0 4px 0 var(--ink);cursor:pointer;text-decoration:none;text-align:center;width:100%;margin-top:12px;-webkit-tap-highlight-color:transparent}
+button:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
+button:disabled{opacity:.55;cursor:default}
+button.ghost{background:#fff}
+button.sun{background:var(--sun)}
+button.small{font-size:15px;padding:8px 10px;margin-top:8px}
+.big{font-family:Fredoka,sans-serif;font-size:96px;line-height:1;text-align:center;color:var(--cyd);margin:8px 0;word-break:break-word}
+.center{text-align:center}
+.pill{display:inline-block;background:var(--sky2);border:2px solid var(--ink);border-radius:999px;padding:3px 10px;font-weight:800;font-size:13px}
+.prog{height:16px;border:2px solid var(--ink);border-radius:999px;background:#fff;overflow:hidden;margin:8px 0}
+.prog i{display:block;height:100%;background:var(--grass);width:0;transition:width .4s}
+ul.list{list-style:none;padding:0;margin:8px 0 0}
+ul.list li{display:flex;justify-content:space-between;gap:8px;padding:8px 2px;border-bottom:1.5px dashed #c9dbe5;font-weight:700}
+ul.list li b{font-family:Fredoka,sans-serif;color:var(--cyd)}
+.err{color:var(--red);font-weight:800;font-size:14px;margin-top:8px}
+.share{display:flex;gap:8px}
+.share input{font-size:13px}
+.qr{display:block;margin:10px auto 0;width:180px;height:180px;border:2.5px solid var(--ink);border-radius:12px;background:#fff;padding:6px}
+.match{background:#fff7cf;border:2px solid var(--ink);border-radius:14px;padding:10px;margin-top:10px;font-weight:800;text-align:center}
+.spin{width:64px;height:64px;border:7px solid var(--sky);border-top-color:var(--cyd);border-radius:50%;margin:18px auto;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.pop{animation:pop .5s cubic-bezier(.2,1.6,.4,1)}
+@keyframes pop{from{transform:scale(.3);opacity:0}to{transform:scale(1);opacity:1}}
+.hide{display:none!important}
+footer{text-align:center;color:var(--mute);font-size:12px;margin-top:18px}
+footer a{color:var(--cyd)}
+</style>
+</head>
+<body>
+<main>
+  <h1>Cabutan <span>Rahsia</span></h1>
+  <p class="sub">Invisible pull · nombor tersembunyi, cabut di telefon sendiri</p>
+
+  <!-- HOME / CREATE -->
+  <section id="vHome" class="hide">
+    <div class="card">
+      <h2>1. Ketua: buat cabutan <small>/ Leader: create</small></h2>
+      <label for="title">Tajuk <small>/ Title (pilihan)</small></label>
+      <input id="title" type="text" maxlength="60" placeholder="cth. Cabutan Pasukan">
+      <div class="seg" id="mode">
+        <button type="button" data-m="count" class="on">Jumlah 1–N</button>
+        <button type="button" data-m="list">Senarai sendiri</button>
+      </div>
+      <div id="mCount">
+        <label for="count">Berapa orang? <small>/ How many people</small></label>
+        <input id="count" type="number" min="2" max="500" value="12" inputmode="numeric">
+        <label class="chk"><input id="pairs" type="checkbox"> Berpasangan (setiap nombor 2×) <small>/ pairs → match</small></label>
+        <div class="hint" id="countHint"></div>
+      </div>
+      <div id="mList" class="hide">
+        <label for="list">Nombor <small>/ Numbers (koma, ruang, atau 1-12)</small></label>
+        <textarea id="list" placeholder="cth. 1,1,2,2,3,3 atau 1-12 atau 7 3 9 15"></textarea>
+        <div class="hint" id="listHint"></div>
+      </div>
+      <div class="err" id="createErr"></div>
+      <button id="btnCreate">Buat cabutan · Create</button>
+    </div>
+    <div class="card">
+      <h2>Ada kod? <small>/ Have a code?</small></h2>
+      <div class="row"><input id="joinCode" type="text" placeholder="Kod bilik / room code" autocapitalize="off" autocomplete="off"></div>
+      <button class="ghost" id="btnJoin">Masuk · Join</button>
+    </div>
+  </section>
+
+  <!-- PARTICIPANT -->
+  <section id="vPull" class="hide">
+    <div class="card center">
+      <div class="pill" id="pTitle">Cabutan</div>
+      <div id="pStatus" class="hint" style="margin-top:8px"></div>
+      <div id="pForm">
+        <label for="pName" style="text-align:left">Nama anda <small>/ Your name</small></label>
+        <input id="pName" type="text" maxlength="30" placeholder="Nama" autocomplete="nickname">
+        <button id="btnPull">🎲 Cabut · Pull</button>
+        <div class="err" id="pErr"></div>
+      </div>
+      <div id="pWait" class="hide"><div class="spin"></div><b>Sedang cabut… / Pulling…</b></div>
+      <div id="pResult" class="hide">
+        <div class="hint">Nombor anda / Your number</div>
+        <div class="big pop" id="pNum">?</div>
+        <div id="pWho" class="hint"></div>
+        <div id="pMatch" class="match hide"></div>
+        <p class="hint">Jangan tunjuk pada orang lain 🤫 / Keep it secret</p>
+      </div>
+    </div>
+    <div class="card hide" id="leaderBox">
+      <h2>Panel ketua <small>/ Leader</small></h2>
+      <div><b id="lCount">0 / 0</b> sudah cabut <small>/ pulled</small></div>
+      <div class="prog"><i id="lBar"></i></div>
+      <label>Kongsi pautan <small>/ Share link</small></label>
+      <div class="share"><input id="shareUrl" type="text" readonly><button class="small" id="btnCopy" style="width:auto;margin:0">Salin</button></div>
+      <button class="small ghost" id="btnShare">Kongsi · Share (WhatsApp…)</button>
+      <button class="small ghost" id="btnQr">Tunjuk QR · Show QR</button>
+      <img id="qr" class="qr hide" alt="QR code">
+      <div class="hint" style="margin-top:8px">Kod / code: <b id="lCode"></b> · bilik tamat ±12 jam</div>
+      <label>Siapa sudah cabut <small>/ Who pulled</small></label>
+      <ul class="list" id="lList"></ul>
+      <button class="sun" id="btnReveal">👀 Dedah semua · Reveal all</button>
+      <button class="small ghost" id="btnNew">+ Cabutan baru · New pull</button>
+      <div class="hint" style="margin-top:8px">Simpan pautan ketua ini untuk buka panel semula. / Bookmark this leader link.</div>
+    </div>
+  </section>
+
+  <section id="vLoad" class="hide"><div class="card center"><div class="spin"></div><b id="loadMsg">Memuat… / Loading…</b></div></section>
+
+  <footer>Data cabutan disimpan sementara di <a href="https://ntfy.sh" target="_blank" rel="noopener">ntfy.sh</a> (±12 jam). · <a href="/">rkean.github.io</a></footer>
+</main>
+
+<script>
+(() => {
+'use strict';
+const SRV = 'https://ntfy.sh/';
+const PREFIX = 'rkpull-';
+const WAIT_MS = 4000;            // claim-and-verify settle time
+const $ = id => document.getElementById(id);
+const views = ['vHome','vPull','vLoad'];
+const show = v => views.forEach(x => $(x).classList.toggle('hide', x !== v));
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+// ---------- helpers ----------
+const ALPH = 'abcdefghjkmnpqrstuvwxyz23456789';
+function rnd(n){const b=crypto.getRandomValues(new Uint8Array(n));let s='';for(const x of b)s+=ALPH[x%ALPH.length];return s;}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const r=crypto.getRandomValues(new Uint32Array(1))[0]%(i+1);[a[i],a[r]]=[a[r],a[i]];}return a;}
+async function sha(s){const h=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return [...new Uint8Array(h)].map(x=>x.toString(16).padStart(2,'0')).join('');}
+// light obfuscation so numbers aren't plain text in the feed
+function obf(arr,key){const t=new TextEncoder().encode(JSON.stringify(arr)),k=new TextEncoder().encode(key);const o=t.map((x,i)=>x^k[i%k.length]^((i*37)&255));let s='';o.forEach(x=>s+=String.fromCharCode(x));return btoa(s);}
+function deobf(b64,key){const s=atob(b64),k=new TextEncoder().encode(key);const o=new Uint8Array(s.length);for(let i=0;i<s.length;i++)o[i]=s.charCodeAt(i)^k[i%k.length]^((i*37)&255);return JSON.parse(new TextDecoder().decode(o));}
+function devId(){let d=localStorage.getItem('rkpull.dev');if(!d){d=rnd(16);localStorage.setItem('rkpull.dev',d);}return d;}
+const DEV = devId();
+
+function parseList(txt){
+  const out=[];
+  for(const tok of txt.split(/[\s,;]+/).filter(Boolean)){
+    const m=tok.match(/^(-?\d+)\s*[-–]\s*(-?\d+)$/);
+    if(m){let a=+m[1],b=+m[2];if(Math.abs(b-a)>999)throw new Error('Julat terlalu besar');const st=a<=b?1:-1;for(let i=a;st>0?i<=b:i>=b;i+=st)out.push(String(i));}
+    else out.push(tok.slice(0,12));
+  }
+  return out;
+}
+function countList(n,pairs){const o=[];if(pairs){for(let i=1;i<=Math.ceil(n/2);i++){o.push(String(i));o.push(String(i));}o.length=n;}else for(let i=1;i<=n;i++)o.push(String(i));return o;}
+
+// ---------- hash routing ----------
+function hashParams(){const p=new URLSearchParams(location.hash.slice(1));return {r:(p.get('r')||'').toLowerCase().replace(/[^a-z0-9]/g,''),k:p.get('k')||''};}
+const baseUrl = location.origin + location.pathname;
+
+// ---------- ntfy ----------
+async function publish(topic,obj){
+  const res=await fetch(SRV+topic,{method:'POST',body:JSON.stringify(obj)});
+  if(!res.ok)throw new Error('Server '+res.status);
+  return res.json();
+}
+async function pollAll(topic){
+  const res=await fetch(SRV+topic+'/json?poll=1&since=all',{cache:'no-store'});
+  if(!res.ok)throw new Error('Server '+res.status);
+  const txt=await res.text();
+  return txt.split('\n').filter(Boolean).map(l=>{try{return JSON.parse(l)}catch(e){return null}}).filter(Boolean);
+}
+
+// ---------- room state ----------
+let seed=null; // setup msg just published by this device (server cache lags ~1s)
+let room=null; // {code, topic, k, isLeader, events:Map, es, setup, list, state}
+function addEvents(evs){let ch=false;for(const e of evs){if(!e||e.event!=='message'||room.events.has(e.id))continue;let m;try{m=JSON.parse(e.message)}catch(x){continue}room.events.set(e.id,{id:e.id,time:e.time,m});ch=true;}if(ch)recompute();return ch;}
+
+// Deterministic: every device sorts the same log the same way (server time, then id)
+function compute(){
+  const evs=[...room.events.values()].sort((a,b)=>a.time-b.time||(a.id<b.id?-1:a.id>b.id?1:0));
+  let setup=null;const assigned=[];const byDev=new Map();
+  for(const e of evs){
+    const m=e.m;
+    if(!setup){if(m.t==='setup'&&m.v===1&&m.d)setup={...m,time:e.time,id:e.id};continue;}
+    if(m.t==='claim'&&m.dev&&!byDev.has(m.dev)&&assigned.length<setup.n){
+      const rec={dev:m.dev,name:String(m.name||'?').slice(0,30),slot:assigned.length,time:e.time,id:e.id};
+      assigned.push(rec);byDev.set(m.dev,rec);
+    }
+  }
+  return {setup,assigned,byDev};
+}
+function recompute(){
+  room.state=compute();
+  const s=room.state.setup;
+  if(s&&!room.list){try{room.list=deobf(s.d,room.code);}catch(e){room.list=null;}}
+  render();
+}
+function numOf(rec){return room.list?room.list[rec.slot]:'?';}
+
+function connect(){
+  if(room.es)room.es.close();
+  const es=new EventSource(SRV+room.topic+'/sse?since=all');
+  room.es=es;
+  es.onmessage=ev=>{try{addEvents([JSON.parse(ev.data)])}catch(e){}};
+  es.onerror=()=>{$('pStatus').textContent='Menyambung semula… / Reconnecting…';};
+  es.onopen=()=>{if(room.state&&room.state.setup)$('pStatus').textContent='';};
+}
+
+async function openRoom(code,k){
+  show('vLoad');$('loadMsg').textContent='Memuat… / Loading…';
+  room={code,topic:PREFIX+code,k,isLeader:false,events:new Map(),list:null,state:null,pulling:false,revealed:false};
+  if(seed&&seed.topic===room.topic){addEvents([seed]);seed=null;}
+  connect(); // SSE since=all replays the log, then streams live
+  for(let i=0;i<40&&!(room.state&&room.state.setup);i++)await new Promise(r=>setTimeout(r,200));
+  if(!(room.state&&room.state.setup)){try{addEvents(await pollAll(room.topic));}catch(e){}}
+  if(!room.state||!room.state.setup){room.es.close();$('loadMsg').innerHTML='Bilik tak dijumpai atau sudah tamat. / Room not found or expired.<br><a href="'+baseUrl+'">Buat baru / New</a>';return;}
+  if(k)room.isLeader=(await sha(k))===room.state.setup.lk;
+  show('vPull');render();
+  if(room.isLeader){const rc=room.code;const t=setInterval(async()=>{if(!room||room.code!==rc){clearInterval(t);return;}try{addEvents(await pollAll(room.topic));}catch(e){}},60000);} // leader resync
+}
+
+function render(){
+  if(!room||!room.state||!room.state.setup)return;
+  const {setup,assigned,byDev}=room.state;
+  $('pTitle').textContent=setup.title||'Cabutan';
+  const mine=byDev.get(DEV);
+  const full=assigned.length>=setup.n;
+  const saved=JSON.parse(localStorage.getItem('rkpull.'+room.code)||'null');
+  if(!room.pulling){
+    if(mine&&(saved||Date.now()/1000-mine.time>WAIT_MS/1000)){
+      $('pForm').classList.add('hide');$('pWait').classList.add('hide');$('pResult').classList.remove('hide');
+      const n=numOf(mine);
+      if($('pNum').textContent!==n){$('pNum').textContent=n;$('pNum').classList.remove('pop');void $('pNum').offsetWidth;$('pNum').classList.add('pop');}
+      $('pWho').textContent=mine.name;
+      if(!saved)localStorage.setItem('rkpull.'+room.code,JSON.stringify({name:mine.name,n}));
+      const same=room.list?room.list.filter(x=>x===n).length:1;
+      const mates=assigned.filter(r=>r.dev!==DEV&&numOf(r)===n).map(r=>r.name);
+      if(same>1){$('pMatch').classList.remove('hide');$('pMatch').innerHTML=mates.length?'🤝 Pasangan anda / Your match: '+mates.map(esc).join(', '):'⏳ Pasangan anda belum cabut / Your match hasn\'t pulled yet';}
+      else $('pMatch').classList.add('hide');
+      $('pStatus').textContent='';
+    }else if(full&&!mine){
+      $('pForm').classList.add('hide');$('pResult').classList.add('hide');
+      $('pStatus').innerHTML='<b>Semua nombor sudah dicabut. / All numbers taken.</b>';
+    }else{
+      $('pForm').classList.remove('hide');$('pResult').classList.add('hide');
+      $('pStatus').textContent=(setup.n-assigned.length)+' nombor tinggal / left';
+      if(room.isLeader&&!$('pName').value)$('pName').placeholder='Nama (ketua pun boleh cabut)';
+    }
+  }
+  if(room.isLeader){
+    $('leaderBox').classList.remove('hide');
+    $('lCount').textContent=assigned.length+' / '+setup.n;
+    $('lBar').style.width=(100*assigned.length/setup.n)+'%';
+    const link=baseUrl+'#r='+room.code;
+    $('shareUrl').value=link;$('lCode').textContent=room.code;
+    $('lList').innerHTML=assigned.map(r=>'<li><span>'+(r.slot+1)+'. '+esc(r.name)+'</span>'+(room.revealed?'<b>'+esc(numOf(r))+'</b>':'<span>🔒</span>')+'</li>').join('')||'<li><span class="hint">Belum ada / none yet</span></li>';
+    $('btnReveal').textContent=room.revealed?'🙈 Sorok · Hide':'👀 Dedah semua · Reveal all';
+  }
+}
+
+async function doPull(){
+  const name=$('pName').value.trim();
+  $('pErr').textContent='';
+  if(!name){$('pErr').textContent='Masukkan nama / Enter your name';$('pName').focus();return;}
+  localStorage.setItem('rkpull.name',name);
+  room.pulling=true;$('pForm').classList.add('hide');$('pWait').classList.remove('hide');
+  try{
+    if(!room.state.byDev.has(DEV)){
+      const msg=await publish(room.topic,{t:'claim',dev:DEV,name,nonce:rnd(6)});
+      addEvents([msg]);
+    }
+    // claim-and-verify: let concurrent claims land, then re-read the full log
+    await new Promise(r=>setTimeout(r,WAIT_MS));
+    addEvents(await pollAll(room.topic));
+  }catch(e){$('pErr').textContent='Gagal / Failed: '+e.message;}
+  room.pulling=false;$('pWait').classList.add('hide');
+  const mine=room.state.byDev.get(DEV);
+  if(mine)localStorage.setItem('rkpull.'+room.code,JSON.stringify({name:mine.name,n:numOf(mine)}));
+  else if(!$('pErr').textContent)$('pErr').textContent='Maaf, nombor habis. / Sorry, none left.';
+  render();
+}
+
+async function create(){
+  $('createErr').textContent='';
+  const mode=document.querySelector('#mode .on').dataset.m;
+  let list;
+  try{
+    if(mode==='count'){const n=parseInt($('count').value,10);if(!(n>=2&&n<=500))throw new Error('2–500 orang');list=countList(n,$('pairs').checked);}
+    else{list=parseList($('list').value);if(list.length<2)throw new Error('Masukkan sekurang-kurangnya 2 nombor');if(list.length>500)throw new Error('Maksimum 500');}
+  }catch(e){$('createErr').textContent=e.message;return;}
+  const btn=$('btnCreate');btn.disabled=true;btn.textContent='Membuat… / Creating…';
+  const code=rnd(10),k=rnd(14);
+  try{
+    seed=await publish(PREFIX+code,{t:'setup',v:1,title:$('title').value.trim().slice(0,60),n:list.length,d:obf(shuffle(list),code),lk:await sha(k)});
+    location.hash='r='+code+'&k='+k;
+  }catch(e){$('createErr').textContent='Gagal / Failed: '+e.message;}
+  btn.disabled=false;btn.textContent='Buat cabutan · Create';
+}
+
+function updHints(){
+  const n=parseInt($('count').value,10)||0;
+  $('countHint').textContent=n>=2?($('pairs').checked?'Nombor 1–'+Math.ceil(n/2)+', setiap satu 2× (cari pasangan). ':'Nombor 1–'+n+', setiap satu sekali. ')+'Ketua pun boleh cabut.':'';
+  try{const l=parseList($('list').value);$('listHint').textContent=l.length?l.length+' nombor: '+l.slice(0,30).join(', ')+(l.length>30?'…':''):'';}catch(e){$('listHint').textContent=e.message;}
+}
+
+// ---------- wire up ----------
+document.querySelectorAll('#mode button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#mode button').forEach(x=>x.classList.toggle('on',x===b));$('mCount').classList.toggle('hide',b.dataset.m!=='count');$('mList').classList.toggle('hide',b.dataset.m!=='list');updHints();});
+['count','pairs','list'].forEach(id=>$(id).addEventListener('input',updHints));
+$('btnCreate').onclick=create;
+$('btnJoin').onclick=()=>{let c=$('joinCode').value.trim();const m=c.match(/r=([a-z0-9]+)/i);if(m)c=m[1];c=c.toLowerCase().replace(/[^a-z0-9]/g,'');if(c)location.hash='r='+c;};
+$('btnPull').onclick=doPull;
+$('pName').addEventListener('keydown',e=>{if(e.key==='Enter')doPull();});
+$('btnCopy').onclick=async()=>{try{await navigator.clipboard.writeText($('shareUrl').value);$('btnCopy').textContent='✓';}catch(e){$('shareUrl').select();document.execCommand('copy');$('btnCopy').textContent='✓';}setTimeout(()=>$('btnCopy').textContent='Salin',1500);};
+$('btnShare').onclick=()=>{const url=$('shareUrl').value,t='Jom cabut nombor rahsia 🎲 '+url;if(navigator.share)navigator.share({title:'Cabutan Rahsia',text:'Jom cabut nombor rahsia 🎲',url}).catch(()=>{});else window.open('https://wa.me/?text='+encodeURIComponent(t),'_blank');};
+$('btnQr').onclick=()=>{const q=$('qr');if(q.classList.contains('hide')){q.src='https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=0&data='+encodeURIComponent($('shareUrl').value);q.classList.remove('hide');}else q.classList.add('hide');};
+$('btnReveal').onclick=()=>{if(!room.revealed&&!confirm('Dedah semua nombor di skrin ini? / Reveal all numbers on this screen?'))return;room.revealed=!room.revealed;render();};
+$('btnNew').onclick=()=>{location.hash='';};
+
+function route(){
+  const {r,k}=hashParams();
+  if(room&&room.es){room.es.close();}
+  room=null;
+  $('pForm').classList.remove('hide');$('pResult').classList.add('hide');$('pWait').classList.add('hide');$('leaderBox').classList.add('hide');$('qr').classList.add('hide');
+  $('pName').value=localStorage.getItem('rkpull.name')||'';
+  if(r)openRoom(r,k);else{show('vHome');updHints();}
+}
+window.addEventListener('hashchange',route);
+route();
+window.__rkpull={get room(){return room}};
+})();
+</script>
+</body>
+</html>
