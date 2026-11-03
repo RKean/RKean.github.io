@@ -118,6 +118,11 @@ footer a{color:var(--cyd)}
         <p class="hint">Jangan tunjuk pada orang lain 🤫 / Keep it secret</p>
       </div>
     </div>
+    <div class="card hide" id="resBox">
+      <h2>🎉 Keputusan penuh <small>/ Full results</small></h2>
+      <div class="hint">Semua sudah cabut / Everyone has pulled</div>
+      <ul class="list" id="resList"></ul>
+    </div>
     <div class="card hide" id="leaderBox">
       <h2>Panel ketua <small>/ Leader</small></h2>
       <div><b id="lCount">0 / 0</b> sudah cabut <small>/ pulled</small></div>
@@ -268,6 +273,7 @@ function render(){
       if(room.isLeader&&!$('pName').value)$('pName').placeholder='Nama (ketua pun boleh cabut)';
     }
   }
+  renderResults(setup,assigned,full);
   if(room.isLeader){
     $('leaderBox').classList.remove('hide');
     $('lCount').textContent=assigned.length+' / '+setup.n;
@@ -277,6 +283,23 @@ function render(){
     $('lList').innerHTML=assigned.map(r=>'<li><span>'+(r.slot+1)+'. '+esc(r.name)+'</span>'+(room.revealed?'<b>'+esc(numOf(r))+'</b>':'<span>🔒</span>')+'</li>').join('')||'<li><span class="hint">Belum ada / none yet</span></li>';
     $('btnReveal').textContent=room.revealed?'🙈 Sorok · Hide':'👀 Dedah semua · Reveal all';
   }
+}
+
+let resTimer=null;
+function renderResults(setup,assigned,full){
+  const box=$('resBox');
+  if(!full||!room.list){box.classList.add('hide');return;}
+  // wait until the last claim has settled so every phone shows the same final list
+  const last=Math.max(...assigned.map(r=>r.time));
+  const age=Date.now()/1000-last;
+  if(age<WAIT_MS/1000){box.classList.add('hide');clearTimeout(resTimer);resTimer=setTimeout(render,(WAIT_MS/1000-age)*1000+300);return;}
+  const groups=new Map();
+  for(const r of assigned){const n=numOf(r);if(!groups.has(n))groups.set(n,[]);groups.get(n).push(r.name);}
+  const keys=[...groups.keys()].sort((a,b)=>{const x=+a,y=+b;return (isNaN(x)||isNaN(y))?String(a).localeCompare(String(b)):x-y;});
+  const mine=room.state.byDev.get(DEV),myN=mine?numOf(mine):null;
+  const html=keys.map(k=>'<li'+(k===myN?' style="background:#fff7cf"':'')+'><b>'+esc(k)+'</b><span style="text-align:right">'+groups.get(k).map(esc).join(' &amp; ')+'</span></li>').join('');
+  if($('resList').innerHTML!==html)$('resList').innerHTML=html;
+  box.classList.remove('hide');
 }
 
 async function doPull(){
@@ -341,7 +364,7 @@ function route(){
   const {r,k}=hashParams();
   if(room&&room.es){room.es.close();}
   room=null;
-  $('pForm').classList.remove('hide');$('pResult').classList.add('hide');$('pWait').classList.add('hide');$('leaderBox').classList.add('hide');$('qr').classList.add('hide');
+  $('pForm').classList.remove('hide');$('pResult').classList.add('hide');$('pWait').classList.add('hide');$('leaderBox').classList.add('hide');$('resBox').classList.add('hide');$('qr').classList.add('hide');
   $('pName').value=localStorage.getItem('rkpull.name')||'';
   if(r)openRoom(r,k);else{show('vHome');updHints();}
 }
