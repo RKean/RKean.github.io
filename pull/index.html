@@ -130,16 +130,16 @@ footer a{color:var(--cyd)}
       <div class="hint" style="margin-top:8px">Kod / code: <b id="lCode"></b> · bilik tamat ±12 jam</div>
       <label>Siapa sudah cabut <small>/ Who pulled (nombor rahsia)</small></label>
       <ul class="list" id="lList"></ul>
-      <div class="hint" style="margin-top:6px">🤫 Hanya orang yang cabut tahu nombor &amp; pasangan sendiri. Ketua pun tak nampak. / Only each puller sees their own number &amp; match.</div>
+      <div class="hint" style="margin-top:6px">🤫 Hanya orang yang cabut tahu nombor &amp; nama yang dia dapat. Ketua pun tak nampak. / Only each puller sees their own number &amp; match.</div>
       <div id="lMatch" class="hide">
-        <label>Elak padanan pusingan lepas <small>/ Avoid past matches</small></label>
+        <label>Elak nama sama macam pusingan lepas <small>/ Avoid past draws</small></label>
         <div id="lPrevRooms"></div>
         <input id="lPrevCodes" type="text" placeholder="Pautan / kod bilik lepas (pilihan)" autocapitalize="off" autocomplete="off" style="margin-top:8px;font-size:14px">
-        <textarea id="lPastTxt" placeholder="Pasangan lepas, satu baris satu pasangan:&#10;Ali - Abu&#10;Siti - Mei" style="margin-top:8px;font-size:15px"></textarea>
+        <textarea id="lPastTxt" placeholder="Siapa dapat siapa dulu, satu baris satu:&#10;Ali - Abu   (Ali dapat Abu)&#10;Siti - Mei" style="margin-top:8px;font-size:15px"></textarea>
         <button class="small ghost" id="btnSaveCfg">Simpan · Save</button>
         <div class="hint" id="lCfgMsg" style="margin-top:6px"></div>
         <button class="small sun" id="btnClose">🔀 Padankan sekarang · Match now</button>
-        <div class="hint" style="margin-top:6px"><b>Simpan sebelum semua orang habis cabut</b> — lepas padanan keluar, ia tak berubah lagi. / Save before everyone has pulled. Padanan rawak keluar sendiri bila semua nombor dicabut. Kalau ada yang tak datang, tekan Padankan sekarang. / Random matches appear when all numbers are pulled, or when you tap Match now.</div>
+        <div class="hint" style="margin-top:6px"><b>Simpan sebelum semua orang habis cabut</b> — lepas padanan keluar, ia tak berubah lagi. / Save before everyone has pulled. Setiap orang dapat satu nama rawak (bukan nama sendiri) bila semua nombor dicabut. Kalau ada yang tak datang, tekan Padankan sekarang. / Everyone gets one random other name when all numbers are pulled, or when you tap Match now.</div>
       </div>
       <div id="lMatchDone" class="hint hide" style="margin-top:8px"></div>
       <button class="small ghost" id="btnNew">+ Cabutan baru · New pull</button>
@@ -237,36 +237,41 @@ function recompute(){
 }
 function numOf(rec){return room.list?room.list[rec.slot]:'?';}
 const normName=s=>String(s||'').trim().toLowerCase().replace(/\s+/g,' ');
-const pairKey=(a,b)=>{a=normName(a);b=normName(b);return a<b?a+'|'+b:b+'|'+a;};
+const pairKey=(a,b)=>normName(a)+'>'+normName(b); // directed: a got b
 function readCfg(cfg,code){if(!cfg)return {pairs:[],prev:[],txt:''};try{const o=deobf(cfg.f,code);return {pairs:Array.isArray(o.pairs)?o.pairs:[],prev:Array.isArray(o.prev)?o.prev:[],txt:String(o.txt||'')};}catch(e){return {pairs:[],prev:[],txt:''};}}
 function seedRng(str){let h1=1779033703,h2=3144134277,h3=1013904242,h4=2773480762;for(let i=0;i<str.length;i++){const k=str.charCodeAt(i);h1=h2^Math.imul(h1^k,597399067);h2=h3^Math.imul(h2^k,2869860233);h3=h4^Math.imul(h3^k,951274213);h4=h1^Math.imul(h4^k,2716044179);}h1=Math.imul(h3^(h1>>>18),597399067);h2=Math.imul(h4^(h2>>>22),2869860233);h3=Math.imul(h1^(h3>>>17),951274213);h4=Math.imul(h2^(h4>>>19),2716044179);let a=(h1^h2^h3^h4)>>>0;return()=>{a=(a+0x6D2B79F5)|0;let t=Math.imul(a^(a>>>15),1|a);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296;};}
-// Random pairs of the people who pulled (a group of three if odd), never repeating a past pair
-// or pairing two entries with the same name. Seeded from the room's own log, so every phone gets the same result.
+// Secret-Santa style: everyone who pulled gets ONE other person (never themselves, never someone with
+// their own name), one-way. Preferably one big random circle (A->B->C->...->A) so nobody gets each other
+// mutually; past "giver>receiver" pairs are avoided. Seeded from the room's own log: same result on every phone.
 function pairRoom(code,st,pastPairs){
-  const P=st.assigned.slice();const n=P.length;
-  if(n<2)return {groups:[P.map(r=>r.dev)],repeats:0};
+  const P=st.assigned.slice();const n=P.length;const to=new Map();
+  if(n<2)return {to,repeats:0};
   const bad=new Set(pastPairs.map(p=>pairKey(p[0],p[1])));
-  const ok=(a,b)=>normName(a.name)!==normName(b.name)&&!bad.has(pairKey(a.name,b.name));
+  const ok=(a,b)=>a!==b&&normName(a.name)!==normName(b.name)&&!bad.has(pairKey(a.name,b.name));
   const rng=seedRng(code+'|'+st.setup.id+'|'+P.map(r=>r.dev).join(','));
   const sh=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const r=Math.floor(rng()*(i+1));[a[i],a[r]]=[a[r],a[i]];}return a;};
-  const order=sh(P);let steps=0;
-  function solve(rem){
-    if(++steps>200000)return null;
-    if(rem.length===0)return [];
-    if(rem.length===3){const [a,b,c]=rem;return ok(a,b)&&ok(a,c)&&ok(b,c)?[[a,b,c]]:null;}
-    const [f,...rest]=rem;
-    for(const c of rest){if(!ok(f,c))continue;const r=solve(rest.filter(x=>x!==c));if(r)return [[f,c],...r];}
-    return null;
+  const done=m=>{m.forEach((v,k)=>to.set(k.dev,v.dev));};
+  // 1) one random circle
+  let steps=0;
+  for(let t=0;t<20&&steps<300000;t++){
+    const o=sh(P);const start=o[0];const path=[start];const used=new Set([start]);let lim=steps+15000;
+    const dfs=()=>{if(++steps>lim)return false;const cur=path[path.length-1];
+      if(path.length===n)return ok(cur,start);
+      for(const c of sh(o)){if(used.has(c)||!ok(cur,c))continue;used.add(c);path.push(c);if(dfs())return true;path.pop();used.delete(c);}
+      return false;};
+    if(dfs()){const m=new Map();for(let i=0;i<n;i++)m.set(path[i],path[(i+1)%n]);done(m);return {to,repeats:0};}
   }
-  let groups=solve(order),repeats=0;
-  if(!groups){ // impossible (or too hard): best effort with the fewest repeats; only the leader is told
-    let best=null,bv=1e9;
-    for(let t=0;t<400;t++){const o=sh(P),g=[];for(let i=0;i+1<o.length;i+=2)g.push([o[i],o[i+1]]);if(o.length%2)g[g.length-1].push(o[o.length-1]);
-      let v=0;for(const x of g)for(let i=0;i<x.length;i++)for(let j=i+1;j<x.length;j++)if(!ok(x[i],x[j]))v++;
-      if(v<bv){bv=v;best=g;}if(!v)break;}
-    groups=best;repeats=bv;
-  }
-  return {groups:groups.map(g=>g.map(r=>r.dev)),repeats};
+  // 2) any valid draw (some may get each other)
+  {const o=sh(P);const m=new Map();const used=new Set();steps=0;
+    const dfs=i=>{if(++steps>200000)return false;if(i===n)return true;const g=o[i];
+      for(const c of sh(o)){if(used.has(c)||!ok(g,c))continue;used.add(c);m.set(g,c);if(dfs(i+1))return true;used.delete(c);m.delete(g);}
+      return false;};
+    if(dfs(0)){done(m);return {to,repeats:0};}}
+  // 3) impossible: circle with the fewest repeats; only the leader is told
+  let best=null,bv=1e9;
+  for(let t=0;t<400;t++){const o=sh(P);let v=0;for(let i=0;i<n;i++)if(!ok(o[i],o[(i+1)%n]))v++;if(v<bv){bv=v;best=o;}if(!v)break;}
+  const m=new Map();for(let i=0;i<n;i++)m.set(best[i],best[(i+1)%n]);done(m);
+  return {to,repeats:bv};
 }
 // pairs that actually happened in another room (for "avoid past matches")
 async function roomPairs(code,depth){
@@ -274,16 +279,17 @@ async function roomPairs(code,depth){
   for(const e of evs){if(e.event!=='message')continue;try{map.set(e.id,{id:e.id,time:e.time,m:JSON.parse(e.message)});}catch(x){}}
   const st=computeLog(map);if(!st.setup)return {ok:false,code};
   let list;try{list=deobf(st.setup.d,code);}catch(e){return {ok:false,code};}
-  const cfg=readCfg(st.cfg,code);const pairs=[];const add=g=>{for(let i=0;i<g.length;i++)for(let j=i+1;j<g.length;j++)pairs.push([g[i],g[j]]);};
+  const cfg=readCfg(st.cfg,code);const pairs=[];const add=g=>{for(let i=0;i<g.length;i++)for(let j=0;j<g.length;j++)if(i!==j)pairs.push([g[i],g[j]]);};
   let status='ok';
   if(new Set(list).size<list.length){const by=new Map();for(const r of st.assigned){const k=list[r.slot];if(!by.has(k))by.set(k,[]);by.get(k).push(r.name);}by.forEach(add);}
-  else if(st.fin){const m=pairRoom(code,st,cfg.pairs);const nm=new Map(st.assigned.map(r=>[r.dev,r.name]));m.groups.forEach(g=>add(g.map(d=>nm.get(d))));}
+  else if(st.fin){const m=pairRoom(code,st,cfg.pairs);const nm=new Map(st.assigned.map(r=>[r.dev,r.name]));m.to.forEach((b,a)=>pairs.push([nm.get(a),nm.get(b)]));}
   else status='open';
   pairs.push(...cfg.pairs); // carry earlier rounds forward
   if(depth>0)for(const c of cfg.prev){if(c===code)continue;try{const r=await roomPairs(c,depth-1);if(r.ok)pairs.push(...r.pairs);}catch(e){}}
   return {ok:true,code,title:st.setup.title||code,pairs,status,people:st.assigned.length};
 }
-function parsePairsTxt(txt){const out=[];for(const line of txt.split(/\n/)){const p=line.split(/\s*(?:-|–|&|\/|,|\+|\bdan\b|\band\b)\s*/i).map(s=>s.trim()).filter(Boolean);for(let i=0;i<p.length;i++)for(let j=i+1;j<p.length;j++)out.push([p[i],p[j]]);}return out;}
+function parsePairsTxt(txt){ // "Ali - Abu" = Ali got Abu; "A - B - C" = A got B, B got C
+  const out=[];for(const line of txt.split(/\n/)){const p=line.split(/\s*(?:->|=>|→|>|-|–|—|:|&|\/|,|\+|\bdapat\b|\bgot\b|\bdan\b|\band\b)\s*/i).map(s=>s.trim()).filter(Boolean);for(let i=0;i+1<p.length;i++)out.push([p[i],p[i+1]]);}return out;}
 function leadRooms(){try{return JSON.parse(localStorage.getItem('rkpull.lead')||'[]');}catch(e){return [];}}
 function deviceRooms(){ // rooms this phone led or pulled in (newest first)
   const m=new Map();for(const r of leadRooms())m.set(r.code,r.t||0);
@@ -349,8 +355,8 @@ function render(){
         if(mates.length<same-1)wait='⏳ Belum ada — pasangan anda belum cabut, akan muncul sendiri. / Waiting, appears here automatically.';
       }else if(room.matchMode==='rand'){
         same=2;
-        if(room.match){const g=room.match.groups.find(x=>x.includes(DEV))||[DEV];mates=g.filter(d=>d!==DEV).map(d=>byDev.get(d)).map(r=>({name:r.name,n:numOf(r)}));}
-        else wait='⏳ Belum ada — padanan rawak keluar bila semua dah cabut ('+assigned.length+'/'+setup.n+'). / Your random match appears when everyone has pulled.';
+        if(room.match){const t=byDev.get(room.match.to.get(DEV));if(t)mates=[{name:t.name}];}
+        else wait='⏳ Belum ada — nama anda keluar bila semua dah cabut ('+assigned.length+'/'+setup.n+'). / The name you get appears when everyone has pulled.';
       }
       room.waitMatch=!!wait;
       const rec={name:mine.name,n,mates:mates.map(m=>m.name)};
@@ -358,7 +364,7 @@ function render(){
       if(same>1){
         const who=mates.map(m=>esc(m.name)+(m.n!=null?' <small>(no. '+esc(m.n)+')</small>':'')).join(', ');
         $('pMatch').classList.remove('hide');
-        $('pMatch').innerHTML='🤝 Padanan anda / Your match:<br>'+(mates.length?'<b style="font-size:20px">'+who+'</b>':'')+(wait?(mates.length?'<br>':'')+wait:'')
+        $('pMatch').innerHTML=(room.matchMode==='rand'?'🎁 Anda dapat / You got:<br>':'🤝 Padanan anda / Your match:<br>')+(mates.length?'<b style="font-size:20px">'+who+'</b>':'')+(wait?(mates.length?'<br>':'')+wait:'')
           +(room.matchMode==='same'?'<div class="hint" style="margin-top:6px">Sama nombor '+esc(n)+' / Same number</div>':'');
       }
       else $('pMatch').classList.add('hide');
@@ -393,14 +399,14 @@ function renderLeadMatch(){
   const miss=st.assigned.length&&missing.length?'<br>Nama belum ada dalam bilik ini / not in this room yet: '+missing.slice(0,20).map(esc).join(', '):'';
   if(!st.fin){
     box.classList.remove('hide');done.classList.add('hide');
-    $('lCfgMsg').innerHTML=(pairs.length?'✓ '+pairs.length+' pasangan lepas akan dielak. / past pairs will be avoided.':'Tiada pasangan lepas disimpan. / No past pairs saved.')+miss;
+    $('lCfgMsg').innerHTML=(pairs.length?'✓ '+pairs.length+' nama pusingan lepas akan dielak (siapa dapat siapa). / past draws will be avoided.':'Tiada pusingan lepas disimpan. / No past draws saved.')+miss;
     $('btnClose').textContent='🔀 Padankan sekarang · Match now ('+st.assigned.length+' orang)';
     $('btnClose').disabled=st.assigned.length<2;
   }else{
     box.classList.add('hide');done.classList.remove('hide');
     const rp=room.match?room.match.repeats:0;
-    done.innerHTML='✓ Padanan rawak siap ('+st.assigned.length+' orang'+(pairs.length?', '+pairs.length+' pasangan lepas dielak':'')+'). Setiap orang nampak padanan sendiri sahaja. / Random matches done; each person sees only their own.'
-      +(rp?'<div class="err">⚠ Tak dapat elak semua: '+rp+' padanan terpaksa berulang (tiada susunan lain yang mungkin). / '+rp+' repeat(s) unavoidable.</div>':'')+miss;
+    done.innerHTML='✓ Siap: '+st.assigned.length+' orang dapat nama rawak'+(pairs.length?', '+pairs.length+' rekod pusingan lepas dielak':'')+'. Tiada siapa dapat nama sendiri; setiap orang nampak nama mereka sahaja. / Done: everyone got one random other person; each sees only their own.'
+      +(rp?'<div class="err">⚠ Tak dapat elak semua: '+rp+' orang terpaksa dapat nama sama macam pusingan lepas (tiada susunan lain yang mungkin). / '+rp+' repeat(s) unavoidable.</div>':'')+miss;
   }
 }
 async function loadPrevRooms(){
@@ -412,7 +418,7 @@ async function loadPrevRooms(){
   if(room!==r0)return;
   room.prevFound=new Map(found.map(r=>[r.code,r]));
   const chosen=new Set(room.cfgData.prev);const fresh=!room.state.cfg;
-  el.innerHTML=found.length?found.map(r=>'<label class="chk" style="margin-top:6px"><input type="checkbox" class="prevChk" value="'+esc(r.code)+'"'+((chosen.has(r.code)||(fresh&&r.pairs.length))?' checked':'')+'> '+esc(r.title)+' <small>· '+r.people+' orang · '+(r.status==='open'?'belum dipadankan':r.pairs.length+' pasangan')+'</small></label>').join('')
+  el.innerHTML=found.length?found.map(r=>'<label class="chk" style="margin-top:6px"><input type="checkbox" class="prevChk" value="'+esc(r.code)+'"'+((chosen.has(r.code)||(fresh&&r.pairs.length))?' checked':'')+'> '+esc(r.title)+' <small>· '+r.people+' orang · '+(r.status==='open'?'belum dipadankan':r.pairs.length+' nama dielak')+'</small></label>').join('')
     :'<div class="hint">Bilik lepas di telefon ini sudah tamat (±12 jam). Taip pasangan lepas di bawah. / Earlier rooms expired; type past pairs below.</div>';
 }
 async function saveCfg(){
@@ -478,7 +484,7 @@ async function create(){
 
 function updHints(){
   const n=parseInt($('count').value,10)||0;
-  $('countHint').textContent=n>=2?($('pairs').checked?'Nombor 1–'+Math.ceil(n/2)+', setiap satu 2× (cari pasangan). ':'Nombor 1–'+n+', setiap satu sekali; padanan rawak keluar bila semua dah cabut (boleh elak padanan pusingan lepas). ')+'Ketua pun boleh cabut.':'';
+  $('countHint').textContent=n>=2?($('pairs').checked?'Nombor 1–'+Math.ceil(n/2)+', setiap satu 2× (cari pasangan). ':'Nombor 1–'+n+', setiap satu sekali; bila semua dah cabut, setiap orang dapat satu nama rawak (bukan nama sendiri, boleh elak nama pusingan lepas). ')+'Ketua pun boleh cabut.':'';
   try{const l=parseList($('list').value);$('listHint').textContent=l.length?l.length+' nombor: '+l.slice(0,30).join(', ')+(l.length>30?'…':''):'';}catch(e){$('listHint').textContent=e.message;}
 }
 
