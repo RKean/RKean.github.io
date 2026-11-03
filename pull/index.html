@@ -213,10 +213,29 @@ function compute(){
 function recompute(){
   room.state=compute();
   const s=room.state.setup;
-  if(s&&!room.list){try{room.list=deobf(s.d,room.code);}catch(e){room.list=null;}}
+  if(s&&!room.list){try{room.list=deobf(s.d,room.code);}catch(e){room.list=null;}buildGroups();}
   render();
 }
 function numOf(rec){return room.list?room.list[rec.slot]:'?';}
+// Match rule, derived from the room's own number list (works for old rooms too):
+//  - list has repeats (pairs / custom 1,1,2,2) -> people with the SAME number are matched
+//  - all numbers unique (plain 1-N) -> neighbours are matched: 1&2, 3&4, 5&6 ... (odd one out joins the last pair)
+function buildGroups(){
+  const L=room.list;room.grp=null;if(!L)return;
+  const cnt=new Map();L.forEach(x=>cnt.set(x,(cnt.get(x)||0)+1));
+  const g=new Map();
+  if(cnt.size<L.length){L.forEach(x=>g.set(x,'s:'+x));room.matchMode='same';}
+  else{
+    const num=L.every(x=>/^-?\d+$/.test(x));
+    const u=[...cnt.keys()].sort(num?(a,b)=>a-b:(a,b)=>a.localeCompare(b));
+    const last=Math.floor(u.length/2)-1;
+    u.forEach((x,i)=>g.set(x,'p:'+Math.min(Math.floor(i/2),Math.max(last,0))));
+    room.matchMode='pair';
+  }
+  room.grp=g;room.grpSize=new Map();for(const x of L){const k=g.get(x);room.grpSize.set(k,(room.grpSize.get(k)||0)+1);}
+}
+function grpOf(n){return room.grp?room.grp.get(n):null;}
+function grpNums(n){const k=grpOf(n);if(!k)return [n];const u=[...new Set(room.list.filter(x=>room.grp.get(x)===k))];return u.every(x=>/^-?\d+$/.test(x))?u.sort((a,b)=>a-b):u.sort();}
 
 function connect(){
   if(room.es)room.es.close();
@@ -268,12 +287,21 @@ function render(){
       const n=numOf(mine);
       if($('pNum').textContent!==n){$('pNum').textContent=n;$('pNum').classList.remove('pop');void $('pNum').offsetWidth;$('pNum').classList.add('pop');}
       $('pWho').textContent=mine.name;
-      const same=room.list?room.list.filter(x=>x===n).length:1;
-      const mates=assigned.filter(r=>r.dev!==DEV&&numOf(r)===n).map(r=>r.name);
+      const gk=grpOf(n);
+      const same=gk?room.grpSize.get(gk):1;
+      const mates=assigned.filter(r=>r.dev!==DEV&&gk&&grpOf(numOf(r))===gk).map(r=>({name:r.name,n:numOf(r)}));
       room.waitMatch=same>1&&mates.length<same-1;
-      const rec={name:mine.name,n,mates};
-      if(!saved||saved.n!==n||JSON.stringify(saved.mates||[])!==JSON.stringify(mates))localStorage.setItem('rkpull.'+room.code,JSON.stringify(rec));
-      if(same>1){$('pMatch').classList.remove('hide');$('pMatch').innerHTML=(mates.length?'🤝 Pasangan anda / Your match: <b>'+mates.map(esc).join(', ')+'</b>':'')+(room.waitMatch?(mates.length?'<br>':'')+'⏳ Pasangan anda belum cabut, akan muncul di sini. / Your match hasn\'t pulled yet, it will appear here.':'');}
+      const rec={name:mine.name,n,mates:mates.map(m=>m.name)};
+      if(!saved||saved.n!==n||JSON.stringify(saved.mates||[])!==JSON.stringify(rec.mates))localStorage.setItem('rkpull.'+room.code,JSON.stringify(rec));
+      if(same>1){
+        const nums=grpNums(n);
+        const rule=room.matchMode==='same'?'Sama nombor '+esc(n)+' / Same number':'Nombor '+nums.map(esc).join(' &amp; ')+' berpasangan / are a pair';
+        const who=mates.map(m=>esc(m.name)+(room.matchMode==='pair'?' <small>(no. '+esc(m.n)+')</small>':'')).join(', ');
+        $('pMatch').classList.remove('hide');
+        $('pMatch').innerHTML='🤝 Padanan anda / Your match:<br>'+(mates.length?'<b style="font-size:20px">'+who+'</b>':'')
+          +(room.waitMatch?(mates.length?'<br>':'')+'⏳ Belum ada — '+(same-1-mates.length>1?'ada yang ':'')+'belum cabut, akan muncul sendiri. / Waiting, appears here automatically.':'')
+          +'<div class="hint" style="margin-top:6px">'+rule+'</div>';
+      }
       else $('pMatch').classList.add('hide');
       $('pStatus').textContent='';
     }else if(full&&!mine){
@@ -335,7 +363,7 @@ async function create(){
 
 function updHints(){
   const n=parseInt($('count').value,10)||0;
-  $('countHint').textContent=n>=2?($('pairs').checked?'Nombor 1–'+Math.ceil(n/2)+', setiap satu 2× (cari pasangan). ':'Nombor 1–'+n+', setiap satu sekali. ')+'Ketua pun boleh cabut.':'';
+  $('countHint').textContent=n>=2?($('pairs').checked?'Nombor 1–'+Math.ceil(n/2)+', setiap satu 2× (cari pasangan). ':'Nombor 1–'+n+', setiap satu sekali; padanan: 1&2, 3&4, 5&6… ')+'Ketua pun boleh cabut.':'';
   try{const l=parseList($('list').value);$('listHint').textContent=l.length?l.length+' nombor: '+l.slice(0,30).join(', ')+(l.length>30?'…':''):'';}catch(e){$('listHint').textContent=e.message;}
 }
 
