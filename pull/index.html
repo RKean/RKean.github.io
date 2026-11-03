@@ -142,6 +142,7 @@ footer a{color:var(--cyd)}
         <div class="hint" style="margin-top:6px"><b>Simpan sebelum semua orang habis cabut</b> — lepas padanan keluar, ia tak berubah lagi. / Save before everyone has pulled. Setiap orang dapat satu nama rawak (bukan nama sendiri) bila semua nombor dicabut. Kalau ada yang tak datang, tekan Padankan sekarang. / Everyone gets one random other name when all numbers are pulled, or when you tap Match now.</div>
       </div>
       <div id="lMatchDone" class="hint hide" style="margin-top:8px"></div>
+      <div id="lRematch" class="hide" style="margin-top:8px"><button class="small sun" id="btnRematch">🔁 Cabut semula · Rematch</button><div class="hint" id="lRmMsg" style="margin-top:6px"></div></div>
       <button class="small ghost" id="btnNew">+ Cabutan baru · New pull</button>
       <div class="hint" style="margin-top:8px">Simpan pautan ketua ini untuk buka panel semula. / Bookmark this leader link.</div>
     </div>
@@ -212,18 +213,26 @@ function addEvents(evs){let ch=false;for(const e of evs){if(!e||e.event!=='messa
 // The room is "final" once all numbers are taken or the leader closes it; nothing after that changes the result.
 function computeLog(evMap){
   const evs=[...evMap.values()].sort((a,b)=>a.time-b.time||(a.id<b.id?-1:a.id>b.id?1:0));
-  let setup=null,cfg=null,fin=false,closed=false;const assigned=[];const byDev=new Map();
+  let setup=null,cfg=null,fin=false,closed=false;const assigned=[];const rmIds=[];const byDev=new Map();
   for(const e of evs){
     const m=e.m;
     if(!setup){if(m.t==='setup'&&m.v===1&&m.d)setup={...m,time:e.time,id:e.id};continue;}
-    if(fin)continue;
+    if(fin){if(m.t==='rematch'&&assigned.length>=2&&rmIds.length<100)rmIds.push(e.id);continue;}
     if(m.t==='claim'&&m.dev&&!byDev.has(m.dev)&&assigned.length<setup.n){
       const rec={dev:m.dev,name:String(m.name||'?').slice(0,30),slot:assigned.length,time:e.time,id:e.id};
       assigned.push(rec);byDev.set(m.dev,rec);if(assigned.length>=setup.n)fin=true;
     }else if(m.t==='cfg'&&typeof m.f==='string')cfg=m;
     else if(m.t==='close'&&assigned.length>=1){fin=true;closed=true;if(m.cfg&&evMap.has(m.cfg)){const c=evMap.get(m.cfg).m;if(c.t==='cfg'&&typeof c.f==='string')cfg=c;}}
   }
-  return {setup,assigned,byDev,cfg,fin,closed};
+  // leader rematch: everyone who pulled gets a new random number (same people, nobody keeps theirs if possible)
+  let cur=assigned;
+  for(const rid of rmIds){
+    const rng=seedRng(setup.id+'|rm|'+rid);const slots=cur.map(r=>r.slot);let best=null;
+    for(let t=0;t<60;t++){const a=slots.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[a[i],a[j]]=[a[j],a[i]];}best=a;if(a.every((x,i)=>x!==slots[i]))break;}
+    cur=cur.map((r,i)=>({...r,slot:best[i]}));
+  }
+  if(rmIds.length){byDev.clear();for(const r of cur)byDev.set(r.dev,r);}
+  return {setup,assigned:cur,byDev,cfg,fin,closed,rmIds};
 }
 function compute(){return computeLog(room.events);}
 function recompute(){
@@ -232,7 +241,7 @@ function recompute(){
   if(s&&!room.list){try{room.list=deobf(s.d,room.code);}catch(e){room.list=null;}}
   if(s&&room.list){room.matchMode=new Set(room.list).size<room.list.length?'same':'rand';}
   room.cfgData=readCfg(room.state.cfg,room.code);
-  room.match=(room.matchMode==='rand'&&room.state.fin)?pairRoom(room.code,room.state,room.cfgData.pairs):null;
+  room.match=(room.matchMode==='rand'&&room.state.fin)?finalDraw(room.code,room.state,room.cfgData.pairs):null;
   render();
 }
 function numOf(rec){return room.list?room.list[rec.slot]:'?';}
@@ -243,12 +252,12 @@ function seedRng(str){let h1=1779033703,h2=3144134277,h3=1013904242,h4=277348076
 // Secret-Santa style: everyone who pulled gets ONE other person (never themselves, never someone with
 // their own name), one-way. Preferably one big random circle (A->B->C->...->A) so nobody gets each other
 // mutually; past "giver>receiver" pairs are avoided. Seeded from the room's own log: same result on every phone.
-function pairRoom(code,st,pastPairs){
+function pairRoom(code,st,pastPairs,salt){
   const P=st.assigned.slice();const n=P.length;const to=new Map();
   if(n<2)return {to,repeats:0};
   const bad=new Set(pastPairs.map(p=>pairKey(p[0],p[1])));
   const ok=(a,b)=>a!==b&&normName(a.name)!==normName(b.name)&&!bad.has(pairKey(a.name,b.name));
-  const rng=seedRng(code+'|'+st.setup.id+'|'+P.map(r=>r.dev).join(','));
+  const rng=seedRng(code+'|'+st.setup.id+'|'+P.map(r=>r.dev).join(',')+(salt?'|rm|'+salt:''));
   const sh=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const r=Math.floor(rng()*(i+1));[a[i],a[r]]=[a[r],a[i]];}return a;};
   const done=m=>{m.forEach((v,k)=>to.set(k.dev,v.dev));};
   // 1) one random circle
@@ -273,6 +282,17 @@ function pairRoom(code,st,pastPairs){
   const m=new Map();for(let i=0;i<n;i++)m.set(best[i],best[(i+1)%n]);done(m);
   return {to,repeats:bv};
 }
+// the draw in force: the first draw, then one new draw per leader rematch (also avoiding the draw just before it when possible)
+function finalDraw(code,st,past){
+  let m=pairRoom(code,st,past,'');const nm=new Map(st.assigned.map(r=>[r.dev,r.name]));
+  for(const rid of (st.rmIds||[])){
+    const prev=[];m.to.forEach((b,a)=>prev.push([nm.get(a),nm.get(b)]));
+    let x=pairRoom(code,st,past.concat(prev),rid);
+    if(x.repeats)x=pairRoom(code,st,past,rid); // can't avoid last draw too: still never repeat earlier rounds
+    m=x;
+  }
+  return m;
+}
 // pairs that actually happened in another room (for "avoid past matches")
 async function roomPairs(code,depth){
   const evs=await pollAll(PREFIX+code);const map=new Map();
@@ -282,7 +302,7 @@ async function roomPairs(code,depth){
   const cfg=readCfg(st.cfg,code);const pairs=[];const add=g=>{for(let i=0;i<g.length;i++)for(let j=0;j<g.length;j++)if(i!==j)pairs.push([g[i],g[j]]);};
   let status='ok';
   if(new Set(list).size<list.length){const by=new Map();for(const r of st.assigned){const k=list[r.slot];if(!by.has(k))by.set(k,[]);by.get(k).push(r.name);}by.forEach(add);}
-  else if(st.fin){const m=pairRoom(code,st,cfg.pairs);const nm=new Map(st.assigned.map(r=>[r.dev,r.name]));m.to.forEach((b,a)=>pairs.push([nm.get(a),nm.get(b)]));}
+  else if(st.fin){const m=finalDraw(code,st,cfg.pairs);const nm=new Map(st.assigned.map(r=>[r.dev,r.name]));m.to.forEach((b,a)=>pairs.push([nm.get(a),nm.get(b)]));}
   else status='open';
   pairs.push(...cfg.pairs); // carry earlier rounds forward
   if(depth>0)for(const c of cfg.prev){if(c===code)continue;try{const r=await roomPairs(c,depth-1);if(r.ok)pairs.push(...r.pairs);}catch(e){}}
@@ -330,6 +350,7 @@ function needSync(){
   const mine=st.byDev.get(DEV);
   if(mine&&room.waitMatch)return true;
   if(!full&&!mine&&(!room.es||room.es.readyState!==1))return true;
+  if(full)return document.visibilityState==='visible'; // leader may rematch at any time
   return Date.now()-room.lastSync>60000&&!full;
 }
 async function resync(){if(!room||room.syncing)return;const r=room;r.syncing=true;try{addEvents(await pollAll(r.topic));r.lastSync=Date.now();}catch(e){}r.syncing=false;if(room===r&&r.es&&r.es.readyState===2)connect();}
@@ -368,7 +389,8 @@ function render(){
           +(room.matchMode==='same'?'<div class="hint" style="margin-top:6px">Sama nombor '+esc(n)+' / Same number</div>':'');
       }
       else $('pMatch').classList.add('hide');
-      $('pStatus').textContent='';
+      const rk=(room.state.rmIds||[]).length;
+      $('pStatus').innerHTML=rk?'<span class="hint">🔁 Ketua sudah cabut semula (ke-'+rk+'). Ini nombor &amp; nama terbaru anda. / Leader rematched; this is your latest result.</span>':'';
     }else if(room.state.fin&&!mine){
       $('pForm').classList.add('hide');$('pResult').classList.add('hide');
       $('pStatus').innerHTML=room.state.closed?'<b>Cabutan sudah ditutup oleh ketua. / The leader has closed this pull.</b>':'<b>Semua nombor sudah dicabut. / All numbers taken.</b>';
@@ -384,8 +406,12 @@ function render(){
     $('lBar').style.width=(100*assigned.length/setup.n)+'%';
     const link=baseUrl+'#r='+room.code;
     $('shareUrl').value=link;$('lCode').textContent=room.code;
-    $('lList').innerHTML=assigned.map(r=>'<li><span>'+(r.slot+1)+'. '+esc(r.name)+'</span><span>🔒</span></li>').join('')||'<li><span class="hint">Belum ada / none yet</span></li>';
+    $('lList').innerHTML=assigned.map((r,i)=>'<li><span>'+(i+1)+'. '+esc(r.name)+'</span><span>🔒</span></li>').join('')||'<li><span class="hint">Belum ada / none yet</span></li>';
     renderLeadMatch();
+    const rk=(room.state.rmIds||[]).length;
+    $('lRematch').classList.toggle('hide',!(room.state.fin&&assigned.length>=2));
+    if(!room.rmBusy)$('btnRematch').disabled=false;
+    $('lRmMsg').innerHTML=(rk?'✓ Cabutan semula ke-'+rk+' siap. ':'')+'Nombor &amp; nama baru untuk '+assigned.length+' orang yang sama (tak perlu cabut lagi); semua orang muat semula untuk lihat. / New numbers &amp; names for the same people; everyone reloads to see.';
   }
 }
 function renderLeadMatch(){
@@ -434,6 +460,13 @@ async function saveCfg(){
     if(notFound.length)$('lCfgMsg').innerHTML+='<br>Bilik tak dijumpai / not found: '+notFound.map(esc).join(', ');
     btn.disabled=false;return true;
   }catch(e){$('lCfgMsg').textContent='Gagal / Failed: '+e.message;btn.disabled=false;return false;}
+}
+async function rematch(){
+  const n=room.state.assigned.length;
+  if(!confirm('Cabut semula untuk '+n+' orang? Semua orang dapat nombor & nama baru (yang lama tak terpakai lagi).\nRematch '+n+' people? Everyone gets a new number & name.'))return;
+  room.rmBusy=true;$('btnRematch').disabled=true;$('lRmMsg').textContent='Mencabut semula… / Rematching…';
+  try{addEvents([await publish(room.topic,{t:'rematch'})]);setTimeout(resync,2500);}catch(e){$('lRmMsg').textContent='Gagal / Failed: '+e.message;}
+  room.rmBusy=false;$('btnRematch').disabled=false;
 }
 async function closeRoom(){
   const n=room.state.assigned.length;
@@ -498,14 +531,14 @@ $('pName').addEventListener('keydown',e=>{if(e.key==='Enter')doPull();});
 $('btnCopy').onclick=async()=>{try{await navigator.clipboard.writeText($('shareUrl').value);$('btnCopy').textContent='✓';}catch(e){$('shareUrl').select();document.execCommand('copy');$('btnCopy').textContent='✓';}setTimeout(()=>$('btnCopy').textContent='Salin',1500);};
 $('btnShare').onclick=()=>{const url=$('shareUrl').value,t='Jom cabut nombor rahsia 🎲 '+url;if(navigator.share)navigator.share({title:'Cabutan Rahsia',text:'Jom cabut nombor rahsia 🎲',url}).catch(()=>{});else window.open('https://wa.me/?text='+encodeURIComponent(t),'_blank');};
 $('btnQr').onclick=()=>{const q=$('qr');if(q.classList.contains('hide')){q.src='https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=0&data='+encodeURIComponent($('shareUrl').value);q.classList.remove('hide');}else q.classList.add('hide');};
-$('btnSaveCfg').onclick=saveCfg;$('btnClose').onclick=closeRoom;
+$('btnSaveCfg').onclick=saveCfg;$('btnClose').onclick=closeRoom;$('btnRematch').onclick=rematch;
 $('btnNew').onclick=()=>{location.hash='';};
 
 function route(){
   const {r,k}=hashParams();
   if(room&&room.es){room.es.close();}
   room=null;
-  $('pForm').classList.remove('hide');$('pResult').classList.add('hide');$('pWait').classList.add('hide');$('leaderBox').classList.add('hide');$('lMatch').classList.add('hide');$('lMatchDone').classList.add('hide');$('lPrevRooms').innerHTML='';$('lPrevCodes').value='';$('lPastTxt').value='';$('qr').classList.add('hide');
+  $('pForm').classList.remove('hide');$('pResult').classList.add('hide');$('pWait').classList.add('hide');$('leaderBox').classList.add('hide');$('lMatch').classList.add('hide');$('lMatchDone').classList.add('hide');$('lRematch').classList.add('hide');$('lPrevRooms').innerHTML='';$('lPrevCodes').value='';$('lPastTxt').value='';$('qr').classList.add('hide');
   $('pName').value=localStorage.getItem('rkpull.name')||'';
   if(r)openRoom(r,k);else{show('vHome');updHints();}
 }
