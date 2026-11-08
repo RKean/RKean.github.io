@@ -1,7 +1,9 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-const ASSET_VER = '?v=10';
+const ASSET_VER = '?v=11';
+
+const BAKE_SHADOW_GAIN = 52;
 
 const BAKED_ALBEDO = {
   nokki: `models/nokki-albedo.jpg${ASSET_VER}`,
@@ -296,6 +298,11 @@ scene.add(violetRim);
 const softFront = new THREE.DirectionalLight();
 scene.add(softFront);
 
+const dirLights = [moonFill, moonKey, violetRim, softFront];
+for (const l of dirLights) {
+  scene.add(l.target);
+}
+
 const faceLift = new THREE.PointLight(0xffffff, 1, 12);
 scene.add(faceLift);
 
@@ -341,6 +348,115 @@ function configureBakedTexture(tex) {
   tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
   tex.needsUpdate = true;
   return tex;
+}
+
+function waitForImage(img) {
+  if (img?.complete && img.naturalWidth > 0) return Promise.resolve(img);
+  return new Promise((resolve, reject) => {
+    const done = () => {
+      img.removeEventListener('load', onLoad);
+      img.removeEventListener('error', onErr);
+    };
+    const onLoad = () => {
+      done();
+      resolve(img);
+    };
+    const onErr = () => {
+      done();
+      reject(new Error('image load failed'));
+    };
+    img.addEventListener('load', onLoad);
+    img.addEventListener('error', onErr);
+  });
+}
+
+function bakeAlbedoFromImage(img, shadowGain = BAKE_SHADOW_GAIN) {
+  const w = img.naturalWidth || img.width;
+  const h = img.naturalHeight || img.height;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(img, 0, 0, w, h);
+  const id = ctx.getImageData(0, 0, w, h);
+  const d = id.data;
+  const lo = 0.02;
+  const hi = 0.25;
+  for (let i = 0; i < d.length; i += 4) {
+    const r = d[i] / 255;
+    const g = d[i + 1] / 255;
+    const b = d[i + 2] / 255;
+    const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    let t = (lum - lo) / (hi - lo);
+    t = Math.max(0, Math.min(1, t));
+    t = t * t * (3 - 2 * t);
+    const lr = Math.min(1, r * shadowGain);
+    const lg = Math.min(1, g * shadowGain);
+    const lb = Math.min(1, b * shadowGain);
+    d[i] = Math.round((lr * (1 - t) + r * t) * 255);
+    d[i + 1] = Math.round((lg * (1 - t) + g * t) * 255);
+    d[i + 2] = Math.round((lb * (1 - t) + b * t) * 255);
+  }
+  ctx.putImageData(id, 0, 0);
+  const tex = new THREE.CanvasTexture(canvas);
+  configureBakedTexture(tex);
+  return tex;
+}
+
+function findGltfBaseColorMap(root) {
+  let found = null;
+  root.traverse((o) => {
+    if (found || !o.isMesh) return;
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    for (const m of mats) {
+      if (m?.map?.image) {
+        found = m.map;
+        return;
+      }
+    }
+  });
+  return found;
+}
+
+async function resolveDisplayAlbedo(root, stageId) {
+  const gltfMap = findGltfBaseColorMap(root);
+  if (gltfMap?.image) {
+    try {
+      await waitForImage(gltfMap.image);
+      const baked = bakeAlbedoFromImage(gltfMap.image);
+      renderer.initTexture(baked);
+      return baked;
+    } catch (err) {
+      console.warn('GLB albedo bake failed, trying sidecar', err);
+    }
+  }
+  try {
+    const sidecar = await loadBakedAlbedo(stageId);
+    return sidecar;
+  } catch (err) {
+    console.warn('Sidecar albedo failed', err);
+    return null;
+  }
+}
+
+function ensureCreatureGeometries(root) {
+  root.traverse((o) => {
+    if (!o.isMesh || !o.geometry) return;
+    if (!o.geometry.getAttribute('normal')) {
+      o.geometry.computeVertexNormals();
+      if (o.geometry.attributes.normal) {
+        o.geometry.attributes.normal.needsUpdate = true;
+      }
+    }
+  });
+}
+
+function aimDirLightsAt(y) {
+  const t = new THREE.Vector3(0, y, 0);
+  for (const l of dirLights) {
+    l.target.position.copy(t);
+    l.target.updateMatrixWorld();
+  }
 }
 
 function loadBakedAlbedo(stageId) {
@@ -578,6 +694,34 @@ function disposeCreatureGroup(group) {
   if (group.parent) group.parent.remove(group);
 }
 
+function createCreaturePhysicalMaterial({ sculpt, mane, profile, map, stageEnvBase, stageId }) {
+  const sheen = mane
+    ? profile.sheen ?? 0.5
+    : sculpt
+      ? (profile.bodySheen ?? 0.38)
+      : (profile.sheen ?? 0.45);
+  const rough = profile.roughness ?? 0.84;
+
+  const mat = new THREE.MeshPhysicalMaterial({
+    color: sculpt ? (mane ? profile.maneColor : profile.bodyColor) : 0xffffff,
+    map: map ?? null,
+    metalness: 0,
+    roughness: mane ? rough * 0.92 : rough,
+    sheen,
+    sheenRoughness: profile.sheenRoughness ?? 0.52,
+    sheenColor: new THREE.Color(profile.sheenColor ?? 0xc8d0e8),
+    clearcoat: 0,
+    envMap,
+    envMapIntensity: stageEnvBase,
+    emissive: 0x000000,
+    emissiveIntensity: 0,
+  });
+  mat.userData.creaturePBR = true;
+  mat.userData.stageEnvBase = profile.envIntensity ?? 1;
+  mat.userData.stageId = stageId;
+  return mat;
+}
+
 function applyStagePBR(root, stageId, bakedMap = null) {
   const cfg = STAGES[stageId];
   const profile = cfg.fur;
@@ -593,35 +737,19 @@ function applyStagePBR(root, stageId, bakedMap = null) {
   const maneY = box.min.y + height * 0.58;
 
   root.traverse((mesh) => {
-    if (!mesh.isMesh || !mesh.material) return;
+    if (!mesh.isMesh) return;
     const meshBox = new THREE.Box3().setFromObject(mesh);
     const centerY = (meshBox.max.y + meshBox.min.y) * 0.5;
     const mane = sculpt && centerY >= maneY;
 
-    const sheen = mane
-      ? profile.sheen ?? 0.5
-      : sculpt
-        ? (profile.bodySheen ?? 0.38)
-        : (profile.sheen ?? 0.45);
-    const rough = profile.roughness ?? 0.84;
-
-    const mat = new THREE.MeshPhysicalMaterial({
-      color: sculpt ? (mane ? profile.maneColor : profile.bodyColor) : 0xffffff,
-      map: map ?? null,
-      metalness: 0,
-      roughness: mane ? rough * 0.92 : rough,
-      sheen,
-      sheenRoughness: profile.sheenRoughness ?? 0.52,
-      sheenColor: new THREE.Color(profile.sheenColor ?? 0xc8d0e8),
-      clearcoat: 0,
-      envMap,
-      envMapIntensity: stageEnvBase,
-      emissive: 0x000000,
-      emissiveIntensity: 0,
+    const mat = createCreaturePhysicalMaterial({
+      sculpt,
+      mane,
+      profile,
+      map,
+      stageEnvBase,
+      stageId,
     });
-    mat.userData.creaturePBR = true;
-    mat.userData.stageEnvBase = profile.envIntensity ?? 1;
-    mat.userData.stageId = stageId;
 
     mesh.material = mat;
     mesh.castShadow = !MOBILE;
@@ -673,8 +801,10 @@ function setCreatureOpacity(group, alpha) {
 async function prepareStageRoot(gltf, stageId) {
   const root = gltf.scene;
   const cfg = STAGES[stageId];
-  frameCreature(root, !!cfg.sculpt);
-  const bakedMap = cfg.sculpt ? null : await loadBakedAlbedo(stageId);
+  ensureCreatureGeometries(root);
+  const framed = frameCreature(root, !!cfg.sculpt);
+  aimDirLightsAt(framed.y);
+  const bakedMap = cfg.sculpt ? null : await resolveDisplayAlbedo(root, stageId);
   applyStagePBR(root, stageId, bakedMap);
   root.userData.stageId = stageId;
   return root;
@@ -820,10 +950,9 @@ function loadStage(stageId, { force = false } = {}) {
       reject,
     );
   });
-  const albedoPromise = cfg.sculpt ? Promise.resolve(null) : loadBakedAlbedo(stageId);
 
-  Promise.all([gltfPromise, albedoPromise])
-    .then(([gltf]) => {
+  gltfPromise
+    .then((gltf) => {
       if (token !== loadToken) return null;
       return prepareStageRoot(gltf, stageId);
     })
