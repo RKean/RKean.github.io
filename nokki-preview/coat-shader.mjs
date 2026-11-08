@@ -27,7 +27,10 @@ uniform float uWrap;
 uniform float uRimPower;
 uniform float uRimStrength;
 uniform float uGlow;
-uniform float uMapMul;
+uniform float uDarkGain;
+uniform float uHiGain;
+uniform float uHiStart;
+uniform float uHiEnd;
 uniform vec3 uCoatFloor;
 uniform vec3 uTint;
 uniform float uAmbient;
@@ -38,11 +41,21 @@ varying vec2 vUv;
 varying vec3 vNormalW;
 varying vec3 vViewDirW;
 
+vec3 toneHighlight(vec3 col) {
+  vec3 clamped = min(col, vec3(1.0));
+  vec3 excess = max(col - vec3(1.0), vec3(0.0));
+  return clamped + excess / (excess + vec3(1.0));
+}
+
 void main() {
   vec3 raw = uHasMap > 0.5 ? texture2D(map, vUv).rgb : uBaseColor;
   float rawLum = dot(raw, vec3(0.2126, 0.7152, 0.0722));
 
-  vec3 coat = pow(max(raw, 0.0), vec3(0.5)) * uMapMul;
+  float hi = smoothstep(uHiStart, uHiEnd, rawLum);
+  vec3 darkCoat = raw * uDarkGain;
+  vec3 hiCoat = pow(max(raw, 0.0), vec3(0.82)) * uHiGain;
+  hiCoat = mix(hiCoat, hiCoat + vec3(0.12, 0.11, 0.1), smoothstep(0.12, 0.35, rawLum));
+  vec3 coat = mix(darkCoat, hiCoat, hi);
   coat = max(coat, uCoatFloor);
   coat *= uTint;
 
@@ -56,13 +69,15 @@ void main() {
   float fresnel = pow(1.0 - clamp(abs(dot(N, V)), 0.0, 1.0), uRimPower);
   vec3 rim = uRimColor * fresnel * uRimStrength;
 
-  float eyeHot = smoothstep(0.18, 0.45, rawLum);
-  vec3 glowCol = mix(raw, raw * vec3(0.62, 0.42, 1.0), 0.55);
-  vec3 glow = glowCol * eyeHot * uGlow;
+  float lumHot = smoothstep(0.14, 0.4, rawLum);
+  float chromaV = max(raw.b - max(raw.r, raw.g) * 0.55, 0.0);
+  float violetHot = smoothstep(0.04, 0.18, chromaV);
+  float glowMask = clamp(max(lumHot, violetHot * 1.15), 0.0, 1.0);
+  vec3 glowCol = mix(raw * uDarkGain, raw * vec3(0.58, 0.38, 1.08), 0.72);
+  vec3 glow = glowCol * glowMask * uGlow;
 
   vec3 col = diffuse + rim + glow + coat * uAmbient;
-  col = col / (col + vec3(1.0));
-  col = min(col, vec3(1.0));
+  col = toneHighlight(col);
   gl_FragColor = vec4(col, 1.0);
 }
 `;
@@ -85,6 +100,8 @@ export function textureReady(tex) {
   return w > 0 && h > 0;
 }
 
+const DEFAULT_FLOOR = [0.028, 0.025, 0.038];
+
 /** @param {object} opts */
 export function createCoatShaderMaterial(opts) {
   const {
@@ -96,7 +113,7 @@ export function createCoatShaderMaterial(opts) {
     maneColor = 0xb8c0d8,
   } = opts;
 
-  const floor = new THREE.Vector3(...(s.floor || [0.07, 0.06, 0.1]));
+  const floor = new THREE.Vector3(...(s.floor || DEFAULT_FLOOR));
   const tint = new THREE.Vector3(...(s.tint || [1, 1, 1]));
 
   const useMap = mapIn && textureReady(mapIn);
@@ -115,14 +132,17 @@ export function createCoatShaderMaterial(opts) {
     uKeyDir: { value: new THREE.Vector3(...s.keyDir).normalize() },
     uKeyColor: { value: new THREE.Color(...s.keyColor) },
     uRimColor: { value: new THREE.Color(...s.rimColor) },
-    uWrap: { value: s.wrap ?? 0.5 },
+    uWrap: { value: s.wrap ?? 0.36 },
     uRimPower: { value: s.rimPower ?? 2.2 },
-    uRimStrength: { value: s.rimStrength ?? 0.55 },
-    uGlow: { value: s.glow ?? 1.25 },
-    uMapMul: { value: s.mapMul ?? 2.1 },
+    uRimStrength: { value: s.rimStrength ?? 0.72 },
+    uGlow: { value: s.glow ?? 1.9 },
+    uDarkGain: { value: s.darkGain ?? 12 },
+    uHiGain: { value: s.hiGain ?? 3.1 },
+    uHiStart: { value: s.hiStart ?? 0.02 },
+    uHiEnd: { value: s.hiEnd ?? 0.18 },
     uCoatFloor: { value: floor },
     uTint: { value: tint },
-    uAmbient: { value: s.ambient ?? 0.22 },
+    uAmbient: { value: s.ambient ?? 0.12 },
     uHasMap: { value: useMap ? 1 : 0 },
     uBaseColor: {
       value: new THREE.Vector3(base.r, base.g, base.b),
@@ -157,12 +177,15 @@ export function applyShaderPresetToMaterial(mat, s) {
   mat.uniforms.uKeyDir.value.set(...s.keyDir).normalize();
   mat.uniforms.uKeyColor.value.setRGB(...s.keyColor);
   mat.uniforms.uRimColor.value.setRGB(...s.rimColor);
-  mat.uniforms.uWrap.value = s.wrap ?? 0.5;
+  mat.uniforms.uWrap.value = s.wrap ?? 0.36;
   mat.uniforms.uRimPower.value = s.rimPower ?? 2.2;
-  mat.uniforms.uRimStrength.value = s.rimStrength ?? 0.55;
-  mat.uniforms.uGlow.value = s.glow ?? 1.25;
-  mat.uniforms.uMapMul.value = s.mapMul ?? 2.1;
-  mat.uniforms.uCoatFloor.value.set(...(s.floor || [0.07, 0.06, 0.1]));
+  mat.uniforms.uRimStrength.value = s.rimStrength ?? 0.72;
+  mat.uniforms.uGlow.value = s.glow ?? 1.9;
+  mat.uniforms.uDarkGain.value = s.darkGain ?? 12;
+  mat.uniforms.uHiGain.value = s.hiGain ?? 3.1;
+  mat.uniforms.uHiStart.value = s.hiStart ?? 0.02;
+  mat.uniforms.uHiEnd.value = s.hiEnd ?? 0.18;
+  mat.uniforms.uCoatFloor.value.set(...(s.floor || DEFAULT_FLOOR));
   mat.uniforms.uTint.value.set(...(s.tint || [1, 1, 1]));
-  mat.uniforms.uAmbient.value = s.ambient ?? 0.22;
+  mat.uniforms.uAmbient.value = s.ambient ?? 0.12;
 }
