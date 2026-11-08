@@ -216,7 +216,8 @@
       color: var(--moon-dim);
       cursor: pointer;
     }
-    .light-btn[aria-pressed="true"] {
+    .light-btn[aria-pressed="true"],
+    .light-btn.is-active {
       color: var(--silver);
       border-color: var(--violet-glow);
       background: linear-gradient(160deg, rgba(92, 61, 143, 0.35), rgba(12, 10, 20, 0.92));
@@ -290,10 +291,10 @@
       </div>
       <p class="lights-label">Lighting</p>
       <div class="lights" role="group" aria-label="Lighting preset">
-        <button type="button" class="light-btn" data-light="studio" aria-pressed="true">Studio · bright</button>
-        <button type="button" class="light-btn" data-light="moonlit" aria-pressed="false">Moonlit · void</button>
-        <button type="button" class="light-btn" data-light="violet" aria-pressed="false">Violet · awakened</button>
-        <button type="button" class="light-btn" data-light="warm" aria-pressed="false">Soft · indoor</button>
+        <button type="button" class="light-btn" data-light="studio">Studio · bright</button>
+        <button type="button" class="light-btn" data-light="moonlit">Moonlit · void</button>
+        <button type="button" class="light-btn" data-light="violet">Violet · awakened</button>
+        <button type="button" class="light-btn" data-light="warm">Soft · indoor</button>
       </div>
       <div class="tools">
         <button type="button" id="btn-rotate" class="tool-btn" aria-pressed="true">Auto-rotate · On</button>
@@ -303,6 +304,6 @@
     </footer>
   </div>
 
-  <script type="module" src="./viewer.mjs"></script>
+  <script type="module" src="./viewer.mjs?v=5"></script>
 </body>
 </html>
