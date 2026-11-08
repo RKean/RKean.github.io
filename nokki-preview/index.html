@@ -190,6 +190,37 @@
       background: linear-gradient(160deg, rgba(92, 61, 143, 0.45), rgba(12, 10, 20, 0.9));
       box-shadow: 0 0 20px rgba(123, 92, 184, 0.25);
     }
+    .lights-label {
+      margin: 0 0 6px;
+      font-family: Oxanium, sans-serif;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--moon-dim);
+    }
+    .lights {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .light-btn {
+      font-family: Outfit, sans-serif;
+      font-size: clamp(12px, 3.2vw, 14px);
+      font-weight: 600;
+      min-height: 46px;
+      padding: 10px 8px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: rgba(12, 10, 20, 0.8);
+      color: var(--moon-dim);
+      cursor: pointer;
+    }
+    .light-btn[aria-pressed="true"] {
+      color: var(--silver);
+      border-color: var(--violet-glow);
+      background: linear-gradient(160deg, rgba(92, 61, 143, 0.35), rgba(12, 10, 20, 0.92));
+    }
     .tools {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -256,6 +287,13 @@
         <button type="button" class="stage-btn" data-stage="nokki" aria-pressed="true">Nokki</button>
         <button type="button" class="stage-btn" data-stage="nokkane" aria-pressed="false">Nokkane</button>
         <button type="button" class="stage-btn" data-stage="nokkara" aria-pressed="false">Nokkara</button>
+      </div>
+      <p class="lights-label">Lighting</p>
+      <div class="lights" role="group" aria-label="Lighting preset">
+        <button type="button" class="light-btn" data-light="studio" aria-pressed="true">Studio · bright</button>
+        <button type="button" class="light-btn" data-light="moonlit" aria-pressed="false">Moonlit · void</button>
+        <button type="button" class="light-btn" data-light="violet" aria-pressed="false">Violet · awakened</button>
+        <button type="button" class="light-btn" data-light="warm" aria-pressed="false">Soft · indoor</button>
       </div>
       <div class="tools">
         <button type="button" id="btn-rotate" class="tool-btn" aria-pressed="true">Auto-rotate · On</button>
