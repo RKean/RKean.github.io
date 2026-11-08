@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-const ASSET_VER = '?v=9';
+const ASSET_VER = '?v=10';
 
 const BAKED_ALBEDO = {
   nokki: `models/nokki-albedo.jpg${ASSET_VER}`,
@@ -87,7 +87,7 @@ const LIGHT_PRESETS = {
   studio: {
     id: 'studio',
     label: 'Studio · bright',
-    exposure: { mobile: 1.14, desktop: 1.06 },
+    exposure: { mobile: 1.32, desktop: 1.22 },
     fog: { color: 0x3a4058, density: 0.012 },
     bg: 0x4a5068,
     envIntensity: 1.05,
@@ -112,7 +112,7 @@ const LIGHT_PRESETS = {
   moonlit: {
     id: 'moonlit',
     label: 'Moonlit · void',
-    exposure: { mobile: 1.12, desktop: 1.04 },
+    exposure: { mobile: 1.28, desktop: 1.18 },
     fog: { color: 0x08081c, density: 0.022 },
     bg: 0x060612,
     envIntensity: 0.92,
@@ -137,7 +137,7 @@ const LIGHT_PRESETS = {
   violet: {
     id: 'violet',
     label: 'Violet · awakened',
-    exposure: { mobile: 1.1, desktop: 1.02 },
+    exposure: { mobile: 1.26, desktop: 1.16 },
     fog: { color: 0x280838, density: 0.02 },
     bg: 0x1a0828,
     envIntensity: 0.88,
@@ -162,7 +162,7 @@ const LIGHT_PRESETS = {
   warm: {
     id: 'warm',
     label: 'Soft · indoor',
-    exposure: { mobile: 1.16, desktop: 1.08 },
+    exposure: { mobile: 1.3, desktop: 1.2 },
     fog: { color: 0x382818, density: 0.016 },
     bg: 0x4a3828,
     envIntensity: 0.95,
@@ -244,7 +244,7 @@ const renderer = new THREE.WebGLRenderer({
 });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, MOBILE ? 1.65 : 2));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMapping = THREE.NeutralToneMapping;
 renderer.toneMappingExposure = getExposure();
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -331,17 +331,47 @@ scene.add(rig);
 const loader = new GLTFLoader();
 const textureLoader = new THREE.TextureLoader();
 /** @type {Map<string, THREE.Texture>} */
-const bakedAlbedoCache = new Map();
+const bakedAlbedoReady = new Map();
+/** @type {Map<string, Promise<THREE.Texture | null>>} */
+const bakedAlbedoLoads = new Map();
 
-function getBakedAlbedo(stageId) {
-  const url = BAKED_ALBEDO[stageId];
-  if (!url) return null;
-  if (bakedAlbedoCache.has(stageId)) return bakedAlbedoCache.get(stageId);
-  const tex = textureLoader.load(url);
+function configureBakedTexture(tex) {
+  tex.flipY = false;
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
-  bakedAlbedoCache.set(stageId, tex);
+  tex.needsUpdate = true;
   return tex;
+}
+
+function loadBakedAlbedo(stageId) {
+  if (!BAKED_ALBEDO[stageId]) return Promise.resolve(null);
+  if (bakedAlbedoReady.has(stageId)) {
+    return Promise.resolve(bakedAlbedoReady.get(stageId));
+  }
+  const inflight = bakedAlbedoLoads.get(stageId);
+  if (inflight) return inflight;
+
+  const promise = new Promise((resolve, reject) => {
+    textureLoader.load(
+      BAKED_ALBEDO[stageId],
+      (tex) => {
+        configureBakedTexture(tex);
+        if (tex.image?.width > 0) {
+          renderer.initTexture(tex);
+        }
+        bakedAlbedoReady.set(stageId, tex);
+        bakedAlbedoLoads.delete(stageId);
+        resolve(tex);
+      },
+      undefined,
+      (err) => {
+        bakedAlbedoLoads.delete(stageId);
+        reject(err);
+      },
+    );
+  });
+  bakedAlbedoLoads.set(stageId, promise);
+  return promise;
 }
 
 function creatureEnvMul(stageId) {
@@ -548,13 +578,15 @@ function disposeCreatureGroup(group) {
   if (group.parent) group.parent.remove(group);
 }
 
-function applyStagePBR(root, stageId) {
+function applyStagePBR(root, stageId, bakedMap = null) {
   const cfg = STAGES[stageId];
   const profile = cfg.fur;
   const sculpt = !!cfg.sculpt;
   const stageEnvBase = creatureEnvMul(stageId);
-  const bakedMap = sculpt ? null : getBakedAlbedo(stageId);
-  if (bakedMap) renderer.initTexture(bakedMap);
+  const map = sculpt ? null : bakedMap;
+  if (map?.image?.width > 0) {
+    renderer.initTexture(map);
+  }
 
   const box = new THREE.Box3().setFromObject(root);
   const height = box.max.y - box.min.y || 1;
@@ -575,7 +607,7 @@ function applyStagePBR(root, stageId) {
 
     const mat = new THREE.MeshPhysicalMaterial({
       color: sculpt ? (mane ? profile.maneColor : profile.bodyColor) : 0xffffff,
-      map: bakedMap ?? null,
+      map: map ?? null,
       metalness: 0,
       roughness: mane ? rough * 0.92 : rough,
       sheen,
@@ -638,11 +670,12 @@ function setCreatureOpacity(group, alpha) {
   });
 }
 
-function prepareStageRoot(gltf, stageId) {
+async function prepareStageRoot(gltf, stageId) {
   const root = gltf.scene;
   const cfg = STAGES[stageId];
   frameCreature(root, !!cfg.sculpt);
-  applyStagePBR(root, stageId);
+  const bakedMap = cfg.sculpt ? null : await loadBakedAlbedo(stageId);
+  applyStagePBR(root, stageId, bakedMap);
   root.userData.stageId = stageId;
   return root;
 }
@@ -774,11 +807,28 @@ function loadStage(stageId, { force = false } = {}) {
 
   setLoading(true, `Loading ${cfg.label}…`, cfg.hint, 0);
 
-  loader.load(
-    cfg.file,
-    (gltf) => {
-      if (token !== loadToken) return;
-      const prepared = prepareStageRoot(gltf, stageId);
+  const gltfPromise = new Promise((resolve, reject) => {
+    loader.load(
+      cfg.file,
+      resolve,
+      (xhr) => {
+        if (token !== loadToken) return;
+        if (xhr.total) {
+          setLoading(true, `Loading ${cfg.label}…`, cfg.hint, xhr.loaded / xhr.total);
+        }
+      },
+      reject,
+    );
+  });
+  const albedoPromise = cfg.sculpt ? Promise.resolve(null) : loadBakedAlbedo(stageId);
+
+  Promise.all([gltfPromise, albedoPromise])
+    .then(([gltf]) => {
+      if (token !== loadToken) return null;
+      return prepareStageRoot(gltf, stageId);
+    })
+    .then((prepared) => {
+      if (!prepared || token !== loadToken) return;
       stageCache.set(stageId, prepared);
 
       const outgoing = outgoingCreature();
@@ -792,21 +842,14 @@ function loadStage(stageId, { force = false } = {}) {
       }
 
       setLoading(false, '');
-    },
-    (xhr) => {
-      if (token !== loadToken) return;
-      if (xhr.total) {
-        setLoading(true, `Loading ${cfg.label}…`, cfg.hint, xhr.loaded / xhr.total);
-      }
-    },
-    (err) => {
+    })
+    .catch((err) => {
       if (token !== loadToken) return;
       console.error(err);
       loadMsg.textContent = `Could not load ${cfg.label}.`;
       loadMsg.classList.add('err');
       loadHint.textContent = 'Check your connection and try again.';
-    },
-  );
+    });
 }
 
 function resetCamera() {
@@ -907,6 +950,8 @@ lightButtons.forEach((btn) => {
 
 resize();
 requestAnimationFrame(tick);
+loadBakedAlbedo('nokki').catch(() => {});
+loadBakedAlbedo('nokkane').catch(() => {});
 loadStage('nokki', { force: true });
 
 document.addEventListener('visibilitychange', () => {
