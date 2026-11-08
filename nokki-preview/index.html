@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#08060e">
+  <meta name="color-scheme" content="dark">
+  <meta name="robots" content="noindex">
+  <title>Shadow Companion Preview · Nokki Line</title>
+  <meta name="description" content="Mobile 3D preview of the Nokki evolution line — original creature companions in three stages.">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;600&family=Outfit:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --void: #05040a;
+      --void-2: #0c0a14;
+      --violet: #5c3d8f;
+      --violet-glow: #7b5cb8;
+      --moon: #c8d4e8;
+      --moon-dim: #8a96ab;
+      --silver: #e4e8f0;
+      --border: rgba(200, 212, 232, 0.12);
+      --tap: rgba(124, 92, 184, 0.35);
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      height: 100%;
+      height: 100dvh;
+      overflow: hidden;
+      background: var(--void);
+      color: var(--silver);
+      font-family: Outfit, system-ui, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    #app {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      grid-template-areas:
+        "head"
+        "stage"
+        "dock";
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    }
+    header {
+      grid-area: head;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 16px 8px;
+      background: linear-gradient(180deg, rgba(5, 4, 10, 0.92) 0%, transparent 100%);
+      z-index: 4;
+      pointer-events: none;
+    }
+    header > * { pointer-events: auto; }
+    .title-wrap { min-width: 0; }
+    h1 {
+      margin: 0;
+      font-family: Oxanium, sans-serif;
+      font-size: clamp(15px, 4.2vw, 18px);
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--moon);
+    }
+    .subtitle {
+      margin: 2px 0 0;
+      font-size: 11px;
+      color: var(--moon-dim);
+      letter-spacing: 0.04em;
+    }
+    .back {
+      flex-shrink: 0;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--moon-dim);
+      text-decoration: none;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: rgba(12, 10, 20, 0.75);
+    }
+    .stage-wrap {
+      grid-area: stage;
+      position: relative;
+      min-height: 0;
+    }
+    #canvas-host {
+      position: absolute;
+      inset: 0;
+      touch-action: none;
+    }
+    #canvas-host canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    .loading {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      background: radial-gradient(ellipse at 50% 40%, rgba(92, 61, 143, 0.15), var(--void) 65%);
+      z-index: 3;
+      transition: opacity 0.35s ease, visibility 0.35s ease;
+    }
+    .loading.is-hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    .loading p {
+      margin: 0;
+      font-size: 14px;
+      color: var(--moon);
+      text-align: center;
+      padding: 0 24px;
+      max-width: 280px;
+      line-height: 1.45;
+    }
+    .loading .hint {
+      font-size: 12px;
+      color: var(--moon-dim);
+    }
+    .bar-track {
+      width: min(220px, 70vw);
+      height: 4px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.08);
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 4px;
+      background: linear-gradient(90deg, var(--violet), var(--moon));
+      transition: width 0.15s ease;
+    }
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 2px solid rgba(200, 212, 232, 0.15);
+      border-top-color: var(--violet-glow);
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .dock {
+      grid-area: dock;
+      z-index: 4;
+      padding: 10px 12px 14px;
+      background: linear-gradient(0deg, rgba(5, 4, 10, 0.95) 0%, transparent 100%);
+    }
+    .stages {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .stage-btn {
+      font-family: Oxanium, sans-serif;
+      font-size: clamp(13px, 3.5vw, 15px);
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      min-height: 52px;
+      padding: 12px 8px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: rgba(12, 10, 20, 0.85);
+      color: var(--moon-dim);
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s, box-shadow 0.2s, background 0.2s;
+    }
+    .stage-btn:active {
+      transform: scale(0.98);
+    }
+    .stage-btn[aria-pressed="true"] {
+      color: var(--silver);
+      border-color: var(--violet-glow);
+      background: linear-gradient(160deg, rgba(92, 61, 143, 0.45), rgba(12, 10, 20, 0.9));
+      box-shadow: 0 0 20px rgba(123, 92, 184, 0.25);
+    }
+    .tools {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .tool-btn {
+      font-family: Outfit, sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      min-height: 48px;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: rgba(12, 10, 20, 0.75);
+      color: var(--moon);
+      cursor: pointer;
+    }
+    .tool-btn[aria-pressed="true"] {
+      border-color: rgba(200, 212, 232, 0.35);
+      background: rgba(200, 212, 232, 0.08);
+    }
+    .gesture-hint {
+      margin: 8px 0 0;
+      text-align: center;
+      font-size: 11px;
+      color: var(--moon-dim);
+      letter-spacing: 0.03em;
+    }
+    .err {
+      color: #e8a0a8;
+    }
+  </style>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="app">
+    <header>
+      <div class="title-wrap">
+        <h1>Nokki Line</h1>
+        <p class="subtitle">Shadow companion preview · stages 1–3</p>
+      </div>
+      <a class="back" href="../">Exit</a>
+    </header>
+
+    <div class="stage-wrap">
+      <div id="canvas-host" aria-label="3D model viewport"></div>
+      <div id="loading" class="loading" role="status" aria-live="polite">
+        <div class="spinner" aria-hidden="true"></div>
+        <p id="load-msg">Summoning companion…</p>
+        <div class="bar-track" aria-hidden="true"><div id="load-bar" class="bar-fill"></div></div>
+        <p id="load-hint" class="hint"></p>
+      </div>
+    </div>
+
+    <footer class="dock">
+      <div class="stages" role="group" aria-label="Evolution stage">
+        <button type="button" class="stage-btn" data-stage="nokki" aria-pressed="true">Nokki</button>
+        <button type="button" class="stage-btn" data-stage="nokkane" aria-pressed="false">Nokkane</button>
+        <button type="button" class="stage-btn" data-stage="nokkara" aria-pressed="false">Nokkara</button>
+      </div>
+      <div class="tools">
+        <button type="button" id="btn-rotate" class="tool-btn" aria-pressed="true">Auto-rotate · On</button>
+        <button type="button" id="btn-reset" class="tool-btn" aria-pressed="false">Reset view</button>
+      </div>
+      <p class="gesture-hint">Drag to orbit · pinch to zoom · two-finger pan</p>
+    </footer>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+    const STAGES = {
+      nokki: {
+        file: 'models/nokki.glb',
+        label: 'Nokki',
+        hint: 'Stage 1 · textured',
+        sculpt: false,
+      },
+      nokkane: {
+        file: 'models/nokkane.glb',
+        label: 'Nokkane',
+        hint: 'Stage 2 · textured',
+        sculpt: false,
+      },
+      nokkara: {
+        file: 'models/nokkara.glb',
+        label: 'Nokkara',
+        hint: 'Stage 3 · high-poly sculpture (may take a moment)',
+        sculpt: true,
+      },
+    };
+
+    const host = document.getElementById('canvas-host');
+    const loadingEl = document.getElementById('loading');
+    const loadMsg = document.getElementById('load-msg');
+    const loadHint = document.getElementById('load-hint');
+    const loadBar = document.getElementById('load-bar');
+    const stageButtons = [...document.querySelectorAll('.stage-btn')];
+    const btnRotate = document.getElementById('btn-rotate');
+    const btnReset = document.getElementById('btn-reset');
+
+    let activeStage = 'nokki';
+    let autoRotate = true;
+    let currentRoot = null;
+    let loadToken = 0;
+    let defaultCam = { pos: new THREE.Vector3(), target: new THREE.Vector3() };
+
+    const renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      alpha: false,
+      powerPreference: 'high-performance',
+      stencil: false,
+    });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.22;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    host.appendChild(renderer.domElement);
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x05040a);
+    scene.fog = new THREE.FogExp2(0x0a0812, 0.045);
+
+    const camera = new THREE.PerspectiveCamera(42, 1, 0.05, 120);
+    camera.position.set(0, 1.15, 3.2);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.rotateSpeed = 0.85;
+    controls.zoomSpeed = 0.9;
+    controls.panSpeed = 0.7;
+    controls.minDistance = 0.8;
+    controls.maxDistance = 12;
+    controls.maxPolarAngle = Math.PI * 0.92;
+    controls.target.set(0, 0.65, 0);
+    controls.touches = {
+      ONE: THREE.TOUCH.ROTATE,
+      TWO: THREE.TOUCH.DOLLY_PAN,
+    };
+
+    const moonKey = new THREE.DirectionalLight(0xb8c8e8, 2.85);
+    moonKey.position.set(-3.5, 6.5, 4.5);
+    moonKey.castShadow = true;
+    moonKey.shadow.mapSize.set(1024, 1024);
+    moonKey.shadow.bias = -0.0002;
+    moonKey.shadow.normalBias = 0.02;
+    scene.add(moonKey);
+
+    const violetRim = new THREE.DirectionalLight(0x6b4a9e, 1.35);
+    violetRim.position.set(4.5, 2.5, -5);
+    scene.add(violetRim);
+
+    const fill = new THREE.HemisphereLight(0x8899b8, 0x1a1428, 0.72);
+    scene.add(fill);
+
+    const softFront = new THREE.DirectionalLight(0x6a5d7c, 0.55);
+    softFront.position.set(0, 1, 3);
+    scene.add(softFront);
+
+    const groundGeo = new THREE.CircleGeometry(14, 64);
+    const groundMat = new THREE.MeshStandardMaterial({
+      color: 0x0a0810,
+      roughness: 0.92,
+      metalness: 0.05,
+    });
+    const ground = new THREE.Mesh(groundGeo, groundMat);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = 0;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    const pedestal = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.55, 0.7, 0.06, 32),
+      new THREE.MeshStandardMaterial({ color: 0x12101a, roughness: 0.85, metalness: 0.1 }),
+    );
+    pedestal.position.y = 0.03;
+    pedestal.receiveShadow = true;
+    scene.add(pedestal);
+
+    const loader = new GLTFLoader();
+
+    function setLoading(visible, msg, hint = '', progress = null) {
+      loadingEl.classList.toggle('is-hidden', !visible);
+      loadMsg.textContent = msg;
+      loadMsg.classList.remove('err');
+      loadHint.textContent = hint;
+      if (progress !== null) {
+        loadBar.style.width = `${Math.min(100, Math.round(progress * 100))}%`;
+      } else if (!visible) {
+        loadBar.style.width = '0%';
+      }
+    }
+
+    function disposeObject(root) {
+      if (!root) return;
+      root.traverse((obj) => {
+        if (obj.isMesh) {
+          obj.geometry?.dispose();
+          const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+          mats.forEach((m) => {
+            if (!m) return;
+            ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'emissiveMap'].forEach((k) => {
+              if (m[k]) m[k].dispose();
+            });
+            m.dispose();
+          });
+        }
+      });
+      scene.remove(root);
+    }
+
+    function frameModel(root, sculpt) {
+      const box = new THREE.Box3().setFromObject(root);
+      const size = box.getSize(new THREE.Vector3());
+      const center = box.getCenter(new THREE.Vector3());
+
+      root.position.sub(center);
+      const maxDim = Math.max(size.x, size.y, size.z) || 1;
+      const targetHeight = sculpt ? 1.65 : 1.35;
+      const scale = targetHeight / maxDim;
+      root.scale.setScalar(scale);
+
+      const grounded = new THREE.Box3().setFromObject(root);
+      root.position.y -= grounded.min.y;
+
+      root.traverse((obj) => {
+        if (obj.isMesh) {
+          obj.castShadow = true;
+          obj.receiveShadow = false;
+          if (sculpt) {
+            if (obj.material) {
+              const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+              mats.forEach((m) => {
+                m.color?.setHex(0xe8eaef);
+                m.roughness = 0.55;
+                m.metalness = 0.08;
+              });
+            }
+          }
+        }
+      });
+
+      const framed = new THREE.Box3().setFromObject(root);
+      const sphere = framed.getBoundingSphere(new THREE.Sphere());
+      const dist = sphere.radius / Math.sin((camera.fov * Math.PI) / 360);
+      const y = framed.max.y * 0.45 + framed.min.y * 0.55;
+
+      defaultCam.pos.set(dist * 0.35, y + dist * 0.28, dist * 1.05);
+      defaultCam.target.set(0, y, 0);
+
+      camera.position.copy(defaultCam.pos);
+      controls.target.copy(defaultCam.target);
+      controls.update();
+
+      controls.minDistance = sphere.radius * 0.55;
+      controls.maxDistance = sphere.radius * 6;
+    }
+
+    function loadStage(stageId) {
+      const cfg = STAGES[stageId];
+      const token = ++loadToken;
+
+      stageButtons.forEach((btn) => {
+        btn.setAttribute('aria-pressed', btn.dataset.stage === stageId ? 'true' : 'false');
+      });
+
+      disposeObject(currentRoot);
+      currentRoot = null;
+      activeStage = stageId;
+
+      setLoading(true, `Loading ${cfg.label}…`, cfg.hint, 0);
+
+      loader.load(
+        cfg.file,
+        (gltf) => {
+          if (token !== loadToken) {
+            disposeObject(gltf.scene);
+            return;
+          }
+          currentRoot = gltf.scene;
+          scene.add(currentRoot);
+          frameModel(currentRoot, cfg.sculpt);
+          setLoading(false, '');
+        },
+        (xhr) => {
+          if (token !== loadToken) return;
+          if (xhr.total) {
+            setLoading(true, `Loading ${cfg.label}…`, cfg.hint, xhr.loaded / xhr.total);
+          }
+        },
+        (err) => {
+          if (token !== loadToken) return;
+          console.error(err);
+          loadMsg.textContent = `Could not load ${cfg.label}.`;
+          loadMsg.classList.add('err');
+          loadHint.textContent = 'Check your connection and try again.';
+        },
+      );
+    }
+
+    function resetCamera() {
+      camera.position.copy(defaultCam.pos);
+      controls.target.copy(defaultCam.target);
+      controls.update();
+    }
+
+    function resize() {
+      const w = host.clientWidth;
+      const h = host.clientHeight;
+      if (w <= 0 || h <= 0) return;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h, false);
+    }
+
+    stageButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.stage;
+        if (id === activeStage && currentRoot) return;
+        loadStage(id);
+      });
+    });
+
+    btnRotate.addEventListener('click', () => {
+      autoRotate = !autoRotate;
+      btnRotate.setAttribute('aria-pressed', autoRotate ? 'true' : 'false');
+      btnRotate.textContent = autoRotate ? 'Auto-rotate · On' : 'Auto-rotate · Off';
+    });
+
+    btnReset.addEventListener('click', resetCamera);
+
+    const ro = new ResizeObserver(resize);
+    ro.observe(host);
+    resize();
+
+    let lastT = performance.now();
+    function tick(now) {
+      requestAnimationFrame(tick);
+      const dt = Math.min(0.05, (now - lastT) / 1000);
+      lastT = now;
+      if (autoRotate && currentRoot) {
+        currentRoot.rotation.y += dt * 0.22;
+      }
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    requestAnimationFrame(tick);
+
+    loadStage('nokki');
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) lastT = performance.now();
+    });
+  </script>
+</body>
+</html>
