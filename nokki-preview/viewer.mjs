@@ -71,8 +71,141 @@ const loadMsg = document.getElementById('load-msg');
 const loadHint = document.getElementById('load-hint');
 const loadBar = document.getElementById('load-bar');
 const stageButtons = [...document.querySelectorAll('.stage-btn')];
+const lightButtons = [...document.querySelectorAll('.light-btn')];
 const btnRotate = document.getElementById('btn-rotate');
 const btnReset = document.getElementById('btn-reset');
+
+const LIGHT_STORAGE_KEY = 'nokki-preview-light';
+
+/** @typedef {{ mapMul: number, midLift: number, glow: number, floor: number }} CoatOpts */
+
+const LIGHT_PRESETS = {
+  studio: {
+    id: 'studio',
+    label: 'Studio · bright',
+    exposure: { mobile: 1.78, desktop: 1.52 },
+    fog: { color: 0x12101c, density: 0.016 },
+    bg: 0x16141e,
+    coat: { mapMul: 2.35, midLift: 0.38, glow: 4.2, floor: 0.2 },
+    envIntensity: 1.4,
+    envPanels: [
+      [0xffffff, 2.05, -6, 4, 2, 0, 1.1, 0],
+      [0xf0e8ff, 1.35, 6, 3, -3, 0, -1.6, 0],
+      [0xf8faff, 1.55, 0, 7, 0, -1.57, 0, 0],
+      [0x585068, 0.55, 0, -4, 0, 1.57, 0, 0],
+    ],
+    lights: {
+      ambient: [0xe4e8f8, 1.05],
+      hemi: { sky: 0xf8f8ff, ground: 0x6e6888, int: 1.75 },
+      moonKey: { color: 0xffffff, int: 3.1, pos: [-3.5, 6.5, 4.5] },
+      moonFill: { color: 0xf0f4ff, int: 0.95, pos: [2, 3, 5] },
+      violetRim: { color: 0xb898e8, int: 0.75, pos: [4.5, 2.5, -5] },
+      softFront: { color: 0xfffaf5, int: 1.65, pos: [0, 1.2, 3.2] },
+      faceLift: { color: 0xffffff, int: 2.1, pos: [0.2, 1.3, 2.6] },
+      rigFront: { color: 0xffffff, int: 2.4, pos: [0, 1.05, 3.8] },
+    },
+    shadows: true,
+  },
+  moonlit: {
+    id: 'moonlit',
+    label: 'Moonlit · void',
+    exposure: { mobile: 1.62, desktop: 1.4 },
+    fog: { color: 0x0a0812, density: 0.026 },
+    bg: 0x05040a,
+    coat: { mapMul: 3.05, midLift: 0.55, glow: 7.2, floor: 0.22 },
+    envIntensity: 1.15,
+    envPanels: [
+      [0xe8ecff, 1.75, -6, 4, 2, 0, 1.1, 0],
+      [0x8b6ac8, 1.25, 6, 2, -4, 0, -1.6, 0],
+      [0xb0bcd8, 1.05, 0, 6, 0, -1.57, 0, 0],
+      [0x3d3550, 0.55, 0, -4, 0, 1.57, 0, 0],
+    ],
+    lights: {
+      ambient: [0xc8d0e8, 0.82],
+      hemi: { sky: 0xe8ecff, ground: 0x322a40, int: 1.48 },
+      moonKey: { color: 0xd8e4ff, int: 2.55, pos: [-3.5, 6.5, 4.5] },
+      moonFill: { color: 0xa8b8d8, int: 0.72, pos: [2, 3, 5] },
+      violetRim: { color: 0x7b58b8, int: 1.15, pos: [4.5, 2.5, -5] },
+      softFront: { color: 0xc0cce8, int: 1.35, pos: [0, 1, 3] },
+      faceLift: { color: 0xe8ecff, int: 1.85, pos: [0.4, 1.35, 2.8] },
+      rigFront: { color: 0xdce4f8, int: 2.0, pos: [0, 1.1, 3.6] },
+    },
+    shadows: true,
+  },
+  violet: {
+    id: 'violet',
+    label: 'Violet · awakened',
+    exposure: { mobile: 1.58, desktop: 1.36 },
+    fog: { color: 0x100818, density: 0.024 },
+    bg: 0x08060e,
+    coat: { mapMul: 2.9, midLift: 0.5, glow: 8.5, floor: 0.21 },
+    envIntensity: 1.28,
+    envPanels: [
+      [0xc8b0ff, 1.95, -5, 4, 2, 0, 1.0, 0],
+      [0x9a5ce0, 1.65, 6, 2.5, -4, 0, -1.5, 0],
+      [0x8868c0, 0.95, 0, 6, 0, -1.57, 0, 0],
+      [0x2a1c38, 0.5, 0, -4, 0, 1.57, 0, 0],
+    ],
+    lights: {
+      ambient: [0xb8a0e8, 0.75],
+      hemi: { sky: 0xc8b0ff, ground: 0x281838, int: 1.38 },
+      moonKey: { color: 0xc0b0f0, int: 2.1, pos: [-3, 6, 4] },
+      moonFill: { color: 0x9060d8, int: 0.85, pos: [3, 2, 4] },
+      violetRim: { color: 0xc878ff, int: 2.05, pos: [4, 2, -5] },
+      softFront: { color: 0xa890e0, int: 1.1, pos: [0, 1, 3] },
+      faceLift: { color: 0xd8b0ff, int: 1.75, pos: [0, 1.3, 2.5] },
+      rigFront: { color: 0xe0c0ff, int: 1.9, pos: [0, 1.1, 3.5] },
+    },
+    shadows: true,
+  },
+  warm: {
+    id: 'warm',
+    label: 'Soft · indoor',
+    exposure: { mobile: 1.68, desktop: 1.44 },
+    fog: { color: 0x14121a, density: 0.02 },
+    bg: 0x121018,
+    coat: { mapMul: 2.75, midLift: 0.46, glow: 5.8, floor: 0.19 },
+    envIntensity: 1.22,
+    envPanels: [
+      [0xfff0e0, 1.65, -5, 4, 2, 0, 1.0, 0],
+      [0xe0d0c0, 1.1, 5, 3, -3, 0, -1.4, 0],
+      [0xfff8f0, 1.25, 0, 6, 0, -1.57, 0, 0],
+      [0x403838, 0.45, 0, -4, 0, 1.57, 0, 0],
+    ],
+    lights: {
+      ambient: [0xf0e8e0, 0.88],
+      hemi: { sky: 0xfff8f0, ground: 0x504840, int: 1.52 },
+      moonKey: { color: 0xfff8f0, int: 2.4, pos: [-3.5, 6, 4.5] },
+      moonFill: { color: 0xffe8d8, int: 0.65, pos: [2, 3, 5] },
+      violetRim: { color: 0xa888c8, int: 0.55, pos: [4.5, 2.5, -5] },
+      softFront: { color: 0xfff4e8, int: 1.55, pos: [0, 1.1, 3.2] },
+      faceLift: { color: 0xffffff, int: 1.95, pos: [0.2, 1.35, 2.6] },
+      rigFront: { color: 0xfff8f0, int: 2.15, pos: [0, 1.05, 3.7] },
+    },
+    shadows: true,
+  },
+};
+
+function loadStoredLightId() {
+  try {
+    const id = localStorage.getItem(LIGHT_STORAGE_KEY);
+    if (id && LIGHT_PRESETS[id]) return id;
+  } catch {
+    /* private mode */
+  }
+  return 'studio';
+}
+
+let activeLightId = loadStoredLightId();
+
+function getCoatOpts() {
+  return LIGHT_PRESETS[activeLightId].coat;
+}
+
+function getExposure() {
+  const p = LIGHT_PRESETS[activeLightId];
+  return MOBILE ? p.exposure.mobile : p.exposure.desktop;
+}
 
 const MOBILE =
   matchMedia('(pointer: coarse)').matches ||
@@ -117,14 +250,17 @@ const renderer = new THREE.WebGLRenderer({
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, MOBILE ? 1.65 : 2));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = MOBILE ? 1.38 : 1.22;
+renderer.toneMappingExposure = getExposure();
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 host.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x05040a);
-scene.fog = new THREE.FogExp2(0x0a0812, MOBILE ? 0.028 : 0.038);
+scene.background = new THREE.Color(LIGHT_PRESETS[activeLightId].bg);
+scene.fog = new THREE.FogExp2(
+  LIGHT_PRESETS[activeLightId].fog.color,
+  LIGHT_PRESETS[activeLightId].fog.density,
+);
 
 const camera = new THREE.PerspectiveCamera(42, 1, 0.05, 120);
 camera.position.set(0, 1.15, 3.2);
@@ -144,34 +280,32 @@ controls.touches = {
   TWO: THREE.TOUCH.DOLLY_PAN,
 };
 
-scene.add(new THREE.AmbientLight(0xb0b8d0, MOBILE ? 0.72 : 0.58));
+const ambient = new THREE.AmbientLight();
+scene.add(ambient);
 
-const hemi = new THREE.HemisphereLight(0xdce4f8, 0x2a2438, MOBILE ? 1.42 : 1.22);
+const hemi = new THREE.HemisphereLight();
 scene.add(hemi);
 
-const moonFill = new THREE.DirectionalLight(0x9aaec8, 0.42);
-moonFill.position.set(2, 3, 5);
+const moonFill = new THREE.DirectionalLight();
 scene.add(moonFill);
 
-const moonKey = new THREE.DirectionalLight(0xd0dcf0, MOBILE ? 2.65 : 2.35);
-moonKey.position.set(-3.5, 6.5, 4.5);
-moonKey.castShadow = true;
+const moonKey = new THREE.DirectionalLight();
 moonKey.shadow.mapSize.set(MOBILE ? 768 : 1024, MOBILE ? 768 : 1024);
 moonKey.shadow.bias = -0.0002;
 moonKey.shadow.normalBias = 0.02;
 scene.add(moonKey);
 
-const violetRim = new THREE.DirectionalLight(0x6b4a9e, 1.25);
-violetRim.position.set(4.5, 2.5, -5);
+const violetRim = new THREE.DirectionalLight();
 scene.add(violetRim);
 
-const softFront = new THREE.DirectionalLight(0x9aa8c8, MOBILE ? 0.92 : 0.48);
-softFront.position.set(0, 1, 3);
+const softFront = new THREE.DirectionalLight();
 scene.add(softFront);
 
-const faceLift = new THREE.PointLight(0xd8dcf0, MOBILE ? 1.05 : 0.45, 10);
-faceLift.position.set(0.4, 1.35, 2.8);
+const faceLift = new THREE.PointLight(0xffffff, 1, 12);
 scene.add(faceLift);
+
+const rigFront = new THREE.PointLight(0xffffff, 1, 14);
+scene.add(rigFront);
 
 const groundMat = new THREE.MeshPhysicalMaterial({
   color: 0x0a0810,
@@ -221,32 +355,24 @@ function makeFurNoiseTexture() {
   return tex;
 }
 
-function buildNightStudioEnv(renderer) {
+function buildEnvFromPreset(presetId) {
+  const preset = LIGHT_PRESETS[presetId];
   const pmrem = new THREE.PMREMGenerator(renderer);
   pmrem.compileEquirectangularShader();
 
   const envScene = new THREE.Scene();
-  envScene.background = new THREE.Color(0x06050c);
+  envScene.background = new THREE.Color(preset.bg);
 
-  const addPanel = (color, intensity, pos, rot) => {
+  for (const [color, scale, px, py, pz, rx, ry, rz] of preset.envPanels) {
     const m = new THREE.Mesh(
       new THREE.PlaneGeometry(8, 8),
-      new THREE.MeshBasicMaterial({
-        color,
-        side: THREE.DoubleSide,
-        toneMapped: false,
-      }),
+      new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, toneMapped: false }),
     );
-    m.position.copy(pos);
-    m.rotation.set(rot.x, rot.y, rot.z);
-    m.scale.setScalar(intensity);
+    m.position.set(px, py, pz);
+    m.rotation.set(rx, ry, rz);
+    m.scale.setScalar(scale);
     envScene.add(m);
-  };
-
-  addPanel(0xe8ecff, 1.65, new THREE.Vector3(-6, 4, 2), new THREE.Euler(0, Math.PI * 0.35, 0));
-  addPanel(0x8b6ac8, 1.15, new THREE.Vector3(6, 2, -4), new THREE.Euler(0, -Math.PI * 0.5, 0));
-  addPanel(0xb0bcd8, 0.85, new THREE.Vector3(0, 6, 0), new THREE.Euler(-Math.PI / 2, 0, 0));
-  addPanel(0x3d3550, 0.45, new THREE.Vector3(0, -4, 0), new THREE.Euler(Math.PI / 2, 0, 0));
+  }
 
   const envTex = pmrem.fromScene(envScene, 0.06).texture;
   pmrem.dispose();
@@ -257,6 +383,117 @@ function buildNightStudioEnv(renderer) {
     }
   });
   return envTex;
+}
+
+function setDir(light, spec) {
+  light.color.setHex(spec.color);
+  light.intensity = spec.int;
+  light.position.set(...spec.pos);
+}
+
+function applyLightsFromPreset(presetId) {
+  const preset = LIGHT_PRESETS[presetId];
+  const L = preset.lights;
+  ambient.color.setHex(L.ambient[0]);
+  ambient.intensity = L.ambient[1];
+  hemi.color.setHex(L.hemi.sky);
+  hemi.groundColor.setHex(L.hemi.ground);
+  hemi.intensity = L.hemi.int;
+  setDir(moonFill, L.moonFill);
+  setDir(moonKey, L.moonKey);
+  setDir(violetRim, L.violetRim);
+  setDir(softFront, L.softFront);
+  moonKey.castShadow = preset.shadows;
+  faceLift.color.setHex(L.faceLift.color);
+  faceLift.intensity = L.faceLift.int;
+  faceLift.position.set(...L.faceLift.pos);
+  rigFront.color.setHex(L.rigFront.color);
+  rigFront.intensity = L.rigFront.int;
+  rigFront.position.set(...L.rigFront.pos);
+  renderer.toneMappingExposure = getExposure();
+  scene.background.setHex(preset.bg);
+  scene.fog.color.setHex(preset.fog.color);
+  scene.fog.density = preset.fog.density;
+}
+
+function assignEnvMap(tex) {
+  scene.environment = tex;
+  const mul = LIGHT_PRESETS[activeLightId].envIntensity;
+  groundMat.envMap = tex;
+  groundMat.envMapIntensity = 0.55 * mul;
+  pedestal.material.envMap = tex;
+  pedestal.material.envMapIntensity = 0.4 * mul;
+
+  const walk = (root) => {
+    if (!root) return;
+    root.traverse((o) => {
+      if (!o.isMesh || !o.material) return;
+      const mats = Array.isArray(o.material) ? o.material : [o.material];
+      mats.forEach((m) => {
+        m.envMap = tex;
+        if (m.userData?.furBase && m.userData.baseEnvMul) {
+          m.envMapIntensity = m.userData.baseEnvMul * mul;
+        }
+      });
+    });
+  };
+  for (const root of stageCache.values()) walk(root);
+  walk(displayedInstance);
+  if (blend.active) {
+    walk(blend.from);
+    walk(blend.to);
+  }
+}
+
+function syncCoatUniforms(root) {
+  if (!root) return;
+  const coat = getCoatOpts();
+  root.traverse((o) => {
+    if (!o.isMesh) return;
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    mats.forEach((m) => {
+      const u = m.userData?.coatUniforms;
+      if (!u) return;
+      u.uMapMul.value = coat.mapMul;
+      u.uMidLift.value = coat.midLift;
+      u.uGlowStrength.value = coat.glow;
+      u.uFloor.value = coat.floor;
+    });
+  });
+}
+
+function syncAllCoatUniforms() {
+  for (const root of stageCache.values()) syncCoatUniforms(root);
+  syncCoatUniforms(displayedInstance);
+  if (blend.active) {
+    syncCoatUniforms(blend.from);
+    syncCoatUniforms(blend.to);
+  }
+}
+
+function setLightPreset(presetId) {
+  if (!LIGHT_PRESETS[presetId] || presetId === activeLightId) return;
+  activeLightId = presetId;
+  try {
+    localStorage.setItem(LIGHT_STORAGE_KEY, presetId);
+  } catch {
+    /* ignore */
+  }
+  applyLightsFromPreset(presetId);
+  if (envMap) envMap.dispose();
+  envMap = buildEnvFromPreset(presetId);
+  assignEnvMap(envMap);
+  syncAllCoatUniforms();
+  lightButtons.forEach((btn) => {
+    btn.setAttribute('aria-pressed', btn.dataset.light === presetId ? 'true' : 'false');
+  });
+  const keep = presentedStage || activeStage || 'nokki';
+  if (stageCache.size) {
+    stageCache.clear();
+    displayedInstance = null;
+    rig.clear();
+    loadStage(keep, { force: true });
+  }
 }
 
 function setLoading(visible, msg, hint = '', progress = null) {
@@ -297,8 +534,8 @@ function disposeCreatureGroup(group) {
   if (group.parent) group.parent.remove(group);
 }
 
-const COAT_MIDTONE = new THREE.Color(0x5c5470);
-const COAT_LIFT = new THREE.Color(0xc8cce0);
+const COAT_MIDTONE = new THREE.Color(0x6e6488);
+const COAT_LIFT = new THREE.Color(0xd8dce8);
 
 function copyMaterialMaps(source, target) {
   if (!source) return;
@@ -327,40 +564,54 @@ function isGlossyAccent(mat, mesh) {
   return false;
 }
 
-/** Eyes / flame live in the albedo on these GLBs — bloom bright texels into emissive. */
-function applyAlbedoEmissiveBoost(material, strength = 2.8) {
+/** Multiply albedo in-shader, lift midtones, floor crushed blacks, bloom eyes/flame from texture. */
+function applyCoatReadabilityShader(material, coat = getCoatOpts()) {
   if (!material.map) return;
   material.onBeforeCompile = (shader) => {
-    shader.uniforms.uGlowStrength = { value: strength };
+    shader.uniforms.uMapMul = { value: coat.mapMul };
+    shader.uniforms.uMidLift = { value: coat.midLift };
+    shader.uniforms.uGlowStrength = { value: coat.glow };
+    shader.uniforms.uFloor = { value: coat.floor };
+    material.userData.coatUniforms = shader.uniforms;
     shader.fragmentShader =
-      /* glsl */ `uniform float uGlowStrength;\n` + shader.fragmentShader;
+      /* glsl */ `
+      uniform float uMapMul;
+      uniform float uMidLift;
+      uniform float uGlowStrength;
+      uniform float uFloor;
+    ` + shader.fragmentShader;
     shader.fragmentShader = shader.fragmentShader.replace(
       '#include <map_fragment>',
       /* glsl */ `
         #include <map_fragment>
+        diffuseColor.rgb *= uMapMul;
+        diffuseColor.rgb += vec3(uMidLift * 0.2, uMidLift * 0.16, uMidLift * 0.3);
+        vec3 coalFloor = vec3(0.18, 0.14, 0.26) * uFloor;
+        diffuseColor.rgb = max(diffuseColor.rgb, coalFloor);
         float coatLum = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
-        float hot = smoothstep(0.22, 0.58, coatLum);
-        vec3 violet = vec3(0.62, 0.42, 1.0);
-        vec3 glowCol = mix(diffuseColor.rgb, diffuseColor.rgb * violet, 0.45);
-        totalEmissiveRadiance += glowCol * hot * uGlowStrength;
-        diffuseColor.rgb = mix(diffuseColor.rgb, max(diffuseColor.rgb, glowCol * 0.55), hot * 0.35);
+        float hotLo = smoothstep(0.12, 0.38, coatLum);
+        float hotHi = smoothstep(0.38, 0.82, coatLum);
+        vec3 violet = vec3(0.58, 0.38, 1.0);
+        vec3 glowCol = mix(diffuseColor.rgb, diffuseColor.rgb * violet, 0.55);
+        totalEmissiveRadiance += glowCol * (hotLo * 0.35 + hotHi * 1.0) * uGlowStrength;
+        diffuseColor.rgb = mix(diffuseColor.rgb, max(diffuseColor.rgb, glowCol * 0.75), hotHi * 0.45);
       `,
     );
   };
-  material.customProgramCacheKey = () => `albedo-glow-${strength}`;
+  material.customProgramCacheKey = () => `coat-read-${activeLightId}`;
+  material.needsUpdate = true;
 }
 
 function liftCoatAlbedo(color, hasTexture) {
   if (hasTexture) {
-    color.setRGB(1.12, 1.1, 1.18);
+    color.setRGB(1.35, 1.3, 1.45);
   }
-  color.lerp(COAT_LIFT, hasTexture ? 0.14 : 0.35);
-  color.lerp(COAT_MIDTONE, hasTexture ? 0.06 : 0.2);
+  color.lerp(COAT_LIFT, hasTexture ? 0.22 : 0.4);
+  color.lerp(COAT_MIDTONE, hasTexture ? 0.12 : 0.28);
   const hsl = { h: 0, s: 0, l: 0 };
   color.getHSL(hsl);
-  hsl.l = THREE.MathUtils.clamp(hsl.l, 0, 1);
-  if (hsl.l < 0.22) hsl.l = 0.22;
-  color.setHSL(hsl.h, hsl.s * 0.92, hsl.l);
+  if (hsl.l < 0.34) hsl.l = 0.34;
+  color.setHSL(hsl.h, hsl.s * 0.88, hsl.l);
 }
 
 function toFurPhysical(source, profile, env, { mane = false, sculpt = false, mesh = null } = {}) {
@@ -378,26 +629,26 @@ function toFurPhysical(source, profile, env, { mane = false, sculpt = false, mes
   if (sculpt) {
     p.color.setHex(mane ? profile.maneColor : profile.bodyColor);
     p.roughness = mane ? profile.roughness * 0.85 : profile.roughness * 1.05;
-    p.metalness = 0.06;
+    p.metalness = 0;
   } else if (hasMap) {
     liftCoatAlbedo(p.color, true);
-    p.roughness = glossy ? 0.35 : 0.62;
+    p.roughness = glossy ? 0.38 : 0.58;
     p.metalness = 0;
   } else if (source?.color) {
     p.color.copy(source.color);
     liftCoatAlbedo(p.color, false);
-    p.roughness = THREE.MathUtils.clamp((source.roughness ?? profile.roughness) * 0.85, 0.38, 0.78);
-    p.metalness = glossy ? 0.12 : 0;
+    p.roughness = THREE.MathUtils.clamp((source.roughness ?? profile.roughness) * 0.8, 0.35, 0.72);
+    p.metalness = 0;
   } else {
     p.color.copy(COAT_MIDTONE);
     p.roughness = profile.roughness;
-    p.metalness = 0.04;
+    p.metalness = 0;
   }
 
   if (glossy) {
-    p.emissiveIntensity = Math.max(p.emissiveIntensity, 1.4);
-    p.roughness = Math.min(p.roughness, 0.32);
-    p.metalness = Math.min(p.metalness, 0.2);
+    p.emissiveIntensity = Math.max(p.emissiveIntensity, 2.2);
+    p.roughness = Math.min(p.roughness, 0.28);
+    p.metalness = 0;
   }
 
   const sheen =
@@ -410,11 +661,14 @@ function toFurPhysical(source, profile, env, { mane = false, sculpt = false, mes
   p.clearcoat = glossy ? 0.45 : 0.04;
   p.clearcoatRoughness = glossy ? 0.15 : 0.72;
   p.envMap = env;
-  p.envMapIntensity = glossy ? profile.envIntensity * 1.8 : profile.envIntensity * (MOBILE ? 1.25 : 1.05);
-  p.aoMapIntensity = hasMap ? 1.08 : 1 - (profile.aoLift ?? 0) * 0.35;
+  const envMul = LIGHT_PRESETS[activeLightId].envIntensity;
+  const baseEnv = glossy ? profile.envIntensity * 1.65 : profile.envIntensity * 1.15;
+  p.envMapIntensity = baseEnv * envMul;
+  p.userData.baseEnvMul = baseEnv;
+  p.aoMapIntensity = hasMap ? 0.72 : 1 - (profile.aoLift ?? 0) * 0.25;
 
-  if (hasMap && !glossy) {
-    applyAlbedoEmissiveBoost(p, MOBILE ? 3.4 : 2.6);
+  if (hasMap) {
+    applyCoatReadabilityShader(p, getCoatOpts());
   }
 
   p.userData.furBase = true;
@@ -587,9 +841,9 @@ function sanitizeGltfMaterials(root) {
         m.map.colorSpace = THREE.SRGBColorSpace;
         m.map.anisotropy = renderer.capabilities.getMaxAnisotropy();
       }
-      if (m.map && m.metalness >= 0.9) {
-        m.metalness = 0;
-        m.roughness = THREE.MathUtils.clamp(m.roughness * 0.55, 0.35, 0.75);
+      m.metalness = 0;
+      if (m.map) {
+        m.roughness = THREE.MathUtils.clamp(m.roughness * 0.5, 0.35, 0.72);
       }
     });
   });
@@ -843,10 +1097,17 @@ function tick(now) {
   renderer.render(scene, camera);
 }
 
-envMap = buildNightStudioEnv(renderer);
-scene.environment = envMap;
-groundMat.envMap = envMap;
-pedestal.material.envMap = envMap;
+applyLightsFromPreset(activeLightId);
+envMap = buildEnvFromPreset(activeLightId);
+assignEnvMap(envMap);
+
+lightButtons.forEach((btn) => {
+  btn.setAttribute('aria-pressed', btn.dataset.light === activeLightId ? 'true' : 'false');
+  btn.addEventListener('click', () => {
+    const id = btn.dataset.light;
+    if (id && id !== activeLightId) setLightPreset(id);
+  });
+});
 
 resize();
 requestAnimationFrame(tick);
