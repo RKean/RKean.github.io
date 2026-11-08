@@ -1,13 +1,12 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import {
-  createCoatShaderMaterial,
-  applyShaderPresetToMaterial,
-  textureReady,
-} from './coat-shader.mjs?v=8';
+const ASSET_VER = '?v=9';
 
-const ASSET_VER = '?v=8';
+const BAKED_ALBEDO = {
+  nokki: `models/nokki-albedo.jpg${ASSET_VER}`,
+  nokkane: `models/nokkane-albedo.jpg${ASSET_VER}`,
+};
 
 const STAGES = {
   nokki: {
@@ -16,15 +15,15 @@ const STAGES = {
     hint: 'Stage 1 · plush wisp coat',
     order: 0,
     fur: {
-      sheen: 0.92,
-      sheenRoughness: 0.62,
-      sheenColor: 0xc4cce0,
-      roughness: 0.78,
+      sheen: 0.48,
+      sheenRoughness: 0.52,
+      sheenColor: 0xc8d0e8,
+      roughness: 0.84,
       coatLift: 0.06,
       anisotropy: 0.72,
       shells: 3,
       shellSpread: 0.014,
-      envIntensity: 1.35,
+      envIntensity: 0.95,
       aoLift: 0.22,
     },
   },
@@ -34,15 +33,15 @@ const STAGES = {
     hint: 'Stage 2 · short living-shadow fur',
     order: 1,
     fur: {
-      sheen: 0.58,
-      sheenRoughness: 0.42,
-      sheenColor: 0x9aa8c8,
-      roughness: 0.68,
+      sheen: 0.42,
+      sheenRoughness: 0.5,
+      sheenColor: 0xb0bcd8,
+      roughness: 0.82,
       coatLift: 0.04,
       anisotropy: 0.55,
       shells: 2,
       shellSpread: 0.009,
-      envIntensity: 1.25,
+      envIntensity: 0.9,
       aoLift: 0.18,
     },
   },
@@ -53,18 +52,18 @@ const STAGES = {
     order: 2,
     sculpt: true,
     fur: {
-      sheen: 0.88,
-      sheenRoughness: 0.48,
-      sheenColor: 0xd8dce8,
-      bodySheen: 0.42,
-      bodyColor: 0x585068,
-      maneColor: 0xd8dce8,
-      roughness: 0.62,
+      sheen: 0.5,
+      sheenRoughness: 0.55,
+      sheenColor: 0xd0d8e8,
+      bodySheen: 0.38,
+      bodyColor: 0x2e2838,
+      maneColor: 0xb8c4d8,
+      roughness: 0.86,
       coatLift: 0.05,
       anisotropy: 0.78,
       shells: 2,
       shellSpread: 0.011,
-      envIntensity: 1.45,
+      envIntensity: 0.85,
       mobileShells: 1,
       shellMeshBudget: 6,
       triangleShellCap: 45000,
@@ -84,32 +83,14 @@ const btnReset = document.getElementById('btn-reset');
 
 const LIGHT_STORAGE_KEY = 'nokki-preview-light';
 
-/** @typedef {{ mapMul: number, midLift: number, glow: number, floor: number }} CoatOpts */
-
 const LIGHT_PRESETS = {
   studio: {
     id: 'studio',
     label: 'Studio · bright',
-    exposure: { mobile: 1.68, desktop: 1.42 },
+    exposure: { mobile: 1.14, desktop: 1.06 },
     fog: { color: 0x3a4058, density: 0.012 },
     bg: 0x4a5068,
-    shader: {
-      keyDir: [-0.42, 0.78, 0.48],
-      keyColor: [1.15, 1.18, 1.28],
-      rimColor: [0.84, 0.9, 1.08],
-      wrap: 0.36,
-      rimPower: 2.15,
-      rimStrength: 0.74,
-      glow: 1.95,
-      darkGain: 12.5,
-      hiGain: 3.25,
-      hiStart: 0.02,
-      hiEnd: 0.18,
-      ambient: 0.12,
-      floor: [0.028, 0.025, 0.038],
-      tint: [1, 1, 1],
-    },
-    envIntensity: 1.4,
+    envIntensity: 1.05,
     envPanels: [
       [0xffffff, 2.05, -6, 4, 2, 0, 1.1, 0],
       [0xf0e8ff, 1.35, 6, 3, -3, 0, -1.6, 0],
@@ -131,26 +112,10 @@ const LIGHT_PRESETS = {
   moonlit: {
     id: 'moonlit',
     label: 'Moonlit · void',
-    exposure: { mobile: 1.72, desktop: 1.42 },
+    exposure: { mobile: 1.12, desktop: 1.04 },
     fog: { color: 0x08081c, density: 0.022 },
     bg: 0x060612,
-    shader: {
-      keyDir: [-0.38, 0.72, 0.52],
-      keyColor: [1.02, 1.08, 1.22],
-      rimColor: [0.52, 0.65, 1.02],
-      wrap: 0.34,
-      rimPower: 2.2,
-      rimStrength: 0.76,
-      glow: 2.05,
-      darkGain: 13,
-      hiGain: 3.15,
-      hiStart: 0.02,
-      hiEnd: 0.18,
-      ambient: 0.11,
-      floor: [0.026, 0.023, 0.036],
-      tint: [0.96, 0.98, 1.06],
-    },
-    envIntensity: 1.15,
+    envIntensity: 0.92,
     envPanels: [
       [0xe8ecff, 1.75, -6, 4, 2, 0, 1.1, 0],
       [0x8b6ac8, 1.25, 6, 2, -4, 0, -1.6, 0],
@@ -172,26 +137,10 @@ const LIGHT_PRESETS = {
   violet: {
     id: 'violet',
     label: 'Violet · awakened',
-    exposure: { mobile: 1.68, desktop: 1.38 },
+    exposure: { mobile: 1.1, desktop: 1.02 },
     fog: { color: 0x280838, density: 0.02 },
     bg: 0x1a0828,
-    shader: {
-      keyDir: [-0.35, 0.7, 0.45],
-      keyColor: [1.08, 0.92, 1.18],
-      rimColor: [0.92, 0.48, 1.12],
-      wrap: 0.32,
-      rimPower: 1.95,
-      rimStrength: 0.78,
-      glow: 2.15,
-      darkGain: 12.2,
-      hiGain: 3.2,
-      hiStart: 0.02,
-      hiEnd: 0.17,
-      ambient: 0.1,
-      floor: [0.027, 0.024, 0.04],
-      tint: [1.02, 0.94, 1.08],
-    },
-    envIntensity: 1.28,
+    envIntensity: 0.88,
     envPanels: [
       [0xc8b0ff, 1.95, -5, 4, 2, 0, 1.0, 0],
       [0x9a5ce0, 1.65, 6, 2.5, -4, 0, -1.5, 0],
@@ -213,26 +162,10 @@ const LIGHT_PRESETS = {
   warm: {
     id: 'warm',
     label: 'Soft · indoor',
-    exposure: { mobile: 1.75, desktop: 1.46 },
+    exposure: { mobile: 1.16, desktop: 1.08 },
     fog: { color: 0x382818, density: 0.016 },
     bg: 0x4a3828,
-    shader: {
-      keyDir: [-0.4, 0.75, 0.5],
-      keyColor: [1.18, 1.08, 0.94],
-      rimColor: [1.02, 0.78, 0.52],
-      wrap: 0.38,
-      rimPower: 2.1,
-      rimStrength: 0.68,
-      glow: 1.85,
-      darkGain: 11.8,
-      hiGain: 3.35,
-      hiStart: 0.02,
-      hiEnd: 0.19,
-      ambient: 0.13,
-      floor: [0.03, 0.027, 0.035],
-      tint: [1.06, 1.02, 0.96],
-    },
-    envIntensity: 1.22,
+    envIntensity: 0.95,
     envPanels: [
       [0xfff0e0, 1.65, -5, 4, 2, 0, 1.0, 0],
       [0xe0d0c0, 1.1, 5, 3, -3, 0, -1.4, 0],
@@ -396,6 +329,26 @@ scene.add(pedestal);
 scene.add(rig);
 
 const loader = new GLTFLoader();
+const textureLoader = new THREE.TextureLoader();
+/** @type {Map<string, THREE.Texture>} */
+const bakedAlbedoCache = new Map();
+
+function getBakedAlbedo(stageId) {
+  const url = BAKED_ALBEDO[stageId];
+  if (!url) return null;
+  if (bakedAlbedoCache.has(stageId)) return bakedAlbedoCache.get(stageId);
+  const tex = textureLoader.load(url);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  bakedAlbedoCache.set(stageId, tex);
+  return tex;
+}
+
+function creatureEnvMul(stageId) {
+  const presetMul = LIGHT_PRESETS[activeLightId].envIntensity;
+  const stageMul = STAGES[stageId]?.fur?.envIntensity ?? 1;
+  return presetMul * stageMul;
+}
 
 function buildEnvFromPreset(presetId) {
   const preset = LIGHT_PRESETS[presetId];
@@ -494,13 +447,9 @@ function assignEnvMap(tex) {
       if (!o.isMesh || !o.material) return;
       const mats = Array.isArray(o.material) ? o.material : [o.material];
       mats.forEach((m) => {
-        if (m.userData?.coatShader) return;
-        if (m.envMap !== undefined) {
-          m.envMap = tex;
-          if (m.userData?.baseEnvMul) {
-            m.envMapIntensity = m.userData.baseEnvMul * mul;
-          }
-        }
+        if (!m.userData?.creaturePBR) return;
+        m.envMap = tex;
+        m.envMapIntensity = m.userData.stageEnvBase * mul;
       });
     });
   };
@@ -512,26 +461,26 @@ function assignEnvMap(tex) {
   }
 }
 
-function getShaderPreset() {
-  return LIGHT_PRESETS[activeLightId].shader;
-}
-
-function syncShaderUniforms(root) {
+function syncCreatureEnv(root) {
   if (!root) return;
-  const s = getShaderPreset();
+  const presetMul = LIGHT_PRESETS[activeLightId].envIntensity;
   root.traverse((o) => {
-    if (!o.isMesh) return;
+    if (!o.isMesh || !o.material) return;
     const mats = Array.isArray(o.material) ? o.material : [o.material];
-    mats.forEach((m) => applyShaderPresetToMaterial(m, s));
+    mats.forEach((m) => {
+      if (!m?.userData?.creaturePBR) return;
+      m.envMap = envMap;
+      m.envMapIntensity = m.userData.stageEnvBase * presetMul;
+    });
   });
 }
 
-function syncAllShaderUniforms() {
-  for (const root of stageCache.values()) syncShaderUniforms(root);
-  syncShaderUniforms(displayedInstance);
+function syncAllCreatureEnv() {
+  for (const root of stageCache.values()) syncCreatureEnv(root);
+  syncCreatureEnv(displayedInstance);
   if (blend.active) {
-    syncShaderUniforms(blend.from);
-    syncShaderUniforms(blend.to);
+    syncCreatureEnv(blend.from);
+    syncCreatureEnv(blend.to);
   }
 }
 
@@ -555,7 +504,7 @@ function setLightPreset(presetId) {
       envMap = tex;
       assignEnvMap(tex);
     }
-    syncAllShaderUniforms();
+    syncAllCreatureEnv();
   } catch (err) {
     console.error('setLightPreset failed', err);
   }
@@ -599,11 +548,13 @@ function disposeCreatureGroup(group) {
   if (group.parent) group.parent.remove(group);
 }
 
-function applyStageCoat(root, stageId) {
+function applyStagePBR(root, stageId) {
   const cfg = STAGES[stageId];
   const profile = cfg.fur;
   const sculpt = !!cfg.sculpt;
-  const shaderPreset = getShaderPreset();
+  const stageEnvBase = creatureEnvMul(stageId);
+  const bakedMap = sculpt ? null : getBakedAlbedo(stageId);
+  if (bakedMap) renderer.initTexture(bakedMap);
 
   const box = new THREE.Box3().setFromObject(root);
   const height = box.max.y - box.min.y || 1;
@@ -613,26 +564,34 @@ function applyStageCoat(root, stageId) {
     if (!mesh.isMesh || !mesh.material) return;
     const meshBox = new THREE.Box3().setFromObject(mesh);
     const centerY = (meshBox.max.y + meshBox.min.y) * 0.5;
-    const mane = sculpt ? centerY >= maneY : false;
+    const mane = sculpt && centerY >= maneY;
 
-    const src = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
-    let map = sculpt ? null : (src?.map ?? null);
-    if (map && textureReady(map)) {
-      map.colorSpace = THREE.NoColorSpace;
-      map.anisotropy = renderer.capabilities.getMaxAnisotropy();
-      renderer.initTexture(map);
-    } else if (!sculpt) {
-      map = null;
-    }
+    const sheen = mane
+      ? profile.sheen ?? 0.5
+      : sculpt
+        ? (profile.bodySheen ?? 0.38)
+        : (profile.sheen ?? 0.45);
+    const rough = profile.roughness ?? 0.84;
 
-    mesh.material = createCoatShaderMaterial({
-      map,
-      shaderPreset,
-      sculpt,
-      mane,
-      bodyColor: profile.bodyColor ?? 0x585068,
-      maneColor: profile.maneColor ?? 0xb8c0d8,
+    const mat = new THREE.MeshPhysicalMaterial({
+      color: sculpt ? (mane ? profile.maneColor : profile.bodyColor) : 0xffffff,
+      map: bakedMap ?? null,
+      metalness: 0,
+      roughness: mane ? rough * 0.92 : rough,
+      sheen,
+      sheenRoughness: profile.sheenRoughness ?? 0.52,
+      sheenColor: new THREE.Color(profile.sheenColor ?? 0xc8d0e8),
+      clearcoat: 0,
+      envMap,
+      envMapIntensity: stageEnvBase,
+      emissive: 0x000000,
+      emissiveIntensity: 0,
     });
+    mat.userData.creaturePBR = true;
+    mat.userData.stageEnvBase = profile.envIntensity ?? 1;
+    mat.userData.stageId = stageId;
+
+    mesh.material = mat;
     mesh.castShadow = !MOBILE;
     mesh.receiveShadow = false;
   });
@@ -679,29 +638,11 @@ function setCreatureOpacity(group, alpha) {
   });
 }
 
-function sanitizeGltfMaterials(root) {
-  root.traverse((obj) => {
-    if (!obj.isMesh || !obj.material) return;
-    const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
-    mats.forEach((m) => {
-      if (m.map) {
-        m.map.colorSpace = THREE.NoColorSpace;
-        m.map.anisotropy = renderer.capabilities.getMaxAnisotropy();
-      }
-      m.metalness = 0;
-      if (m.map) {
-        m.roughness = THREE.MathUtils.clamp(m.roughness * 0.5, 0.35, 0.72);
-      }
-    });
-  });
-}
-
 function prepareStageRoot(gltf, stageId) {
   const root = gltf.scene;
   const cfg = STAGES[stageId];
-  sanitizeGltfMaterials(root);
   frameCreature(root, !!cfg.sculpt);
-  applyStageCoat(root, stageId);
+  applyStagePBR(root, stageId);
   root.userData.stageId = stageId;
   return root;
 }
@@ -709,7 +650,7 @@ function prepareStageRoot(gltf, stageId) {
 function instantiateFromCache(stageId) {
   const template = stageCache.get(stageId);
   const instance = template.clone(true);
-  syncShaderUniforms(instance);
+  syncCreatureEnv(instance);
   return instance;
 }
 
