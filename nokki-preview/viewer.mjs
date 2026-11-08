@@ -83,9 +83,11 @@ const LIGHT_PRESETS = {
   studio: {
     id: 'studio',
     label: 'Studio · bright',
-    exposure: { mobile: 1.78, desktop: 1.52 },
-    fog: { color: 0x12101c, density: 0.016 },
-    bg: 0x16141e,
+    exposure: { mobile: 1.85, desktop: 1.55 },
+    fog: { color: 0x3a4058, density: 0.012 },
+    bg: 0x4a5068,
+    coatTint: [1.15, 1.16, 1.22],
+    emissiveIntensity: 2.1,
     coat: { mapMul: 2.35, midLift: 0.38, glow: 4.2, floor: 0.2 },
     envIntensity: 1.4,
     envPanels: [
@@ -109,9 +111,11 @@ const LIGHT_PRESETS = {
   moonlit: {
     id: 'moonlit',
     label: 'Moonlit · void',
-    exposure: { mobile: 1.62, desktop: 1.4 },
-    fog: { color: 0x0a0812, density: 0.026 },
-    bg: 0x05040a,
+    exposure: { mobile: 1.72, desktop: 1.42 },
+    fog: { color: 0x08081c, density: 0.022 },
+    bg: 0x060612,
+    coatTint: [0.92, 0.96, 1.18],
+    emissiveIntensity: 2.85,
     coat: { mapMul: 3.05, midLift: 0.55, glow: 7.2, floor: 0.22 },
     envIntensity: 1.15,
     envPanels: [
@@ -135,9 +139,11 @@ const LIGHT_PRESETS = {
   violet: {
     id: 'violet',
     label: 'Violet · awakened',
-    exposure: { mobile: 1.58, desktop: 1.36 },
-    fog: { color: 0x100818, density: 0.024 },
-    bg: 0x08060e,
+    exposure: { mobile: 1.68, desktop: 1.38 },
+    fog: { color: 0x280838, density: 0.02 },
+    bg: 0x1a0828,
+    coatTint: [1.08, 0.88, 1.32],
+    emissiveIntensity: 3.4,
     coat: { mapMul: 2.9, midLift: 0.5, glow: 8.5, floor: 0.21 },
     envIntensity: 1.28,
     envPanels: [
@@ -161,9 +167,11 @@ const LIGHT_PRESETS = {
   warm: {
     id: 'warm',
     label: 'Soft · indoor',
-    exposure: { mobile: 1.68, desktop: 1.44 },
-    fog: { color: 0x14121a, density: 0.02 },
-    bg: 0x121018,
+    exposure: { mobile: 1.75, desktop: 1.46 },
+    fog: { color: 0x382818, density: 0.016 },
+    bg: 0x4a3828,
+    coatTint: [1.22, 1.1, 0.92],
+    emissiveIntensity: 2.4,
     coat: { mapMul: 2.75, midLift: 0.46, glow: 5.8, floor: 0.19 },
     envIntensity: 1.22,
     envPanels: [
@@ -219,6 +227,10 @@ let autoRotate = true;
 let loadToken = 0;
 let defaultCam = { pos: new THREE.Vector3(), target: new THREE.Vector3() };
 let envMap = null;
+/** @type {Map<string, THREE.Texture>} */
+const envMapCache = new Map();
+/** @type {WeakMap<THREE.Texture, { map: THREE.Texture, emissiveMap: THREE.Texture }>} */
+const textureLiftCache = new WeakMap();
 
 /** @type {Map<string, THREE.Group>} */
 const stageCache = new Map();
@@ -385,6 +397,28 @@ function buildEnvFromPreset(presetId) {
   return envTex;
 }
 
+function getEnvMapForPreset(presetId) {
+  if (envMapCache.has(presetId)) {
+    return envMapCache.get(presetId);
+  }
+  try {
+    const tex = buildEnvFromPreset(presetId);
+    envMapCache.set(presetId, tex);
+    return tex;
+  } catch (err) {
+    console.warn('PMREM build failed for', presetId, err);
+    return envMap ?? null;
+  }
+}
+
+function updateLightPickerUi(presetId) {
+  lightButtons.forEach((btn) => {
+    const on = btn.dataset.light === presetId;
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    btn.classList.toggle('is-active', on);
+  });
+}
+
 function setDir(light, spec) {
   light.color.setHex(spec.color);
   light.intensity = spec.int;
@@ -403,7 +437,7 @@ function applyLightsFromPreset(presetId) {
   setDir(moonKey, L.moonKey);
   setDir(violetRim, L.violetRim);
   setDir(softFront, L.softFront);
-  moonKey.castShadow = preset.shadows;
+  moonKey.castShadow = preset.shadows && !MOBILE;
   faceLift.color.setHex(L.faceLift.color);
   faceLift.intensity = L.faceLift.int;
   faceLift.position.set(...L.faceLift.pos);
@@ -471,28 +505,57 @@ function syncAllCoatUniforms() {
   }
 }
 
+function applyPresetCoatTint(root) {
+  if (!root) return;
+  const preset = LIGHT_PRESETS[activeLightId];
+  const tint = preset.coatTint;
+  const ei = preset.emissiveIntensity ?? 2;
+  root.traverse((o) => {
+    if (!o.isMesh) return;
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    mats.forEach((m) => {
+      if (!m?.userData?.furBase || m.userData?.isShell) return;
+      if (m.userData.mobileCoat) {
+        m.color.setRGB(tint[0], tint[1], tint[2]);
+        m.emissiveIntensity = ei;
+      }
+    });
+  });
+}
+
+function applyPresetCoatTintAll() {
+  for (const root of stageCache.values()) applyPresetCoatTint(root);
+  applyPresetCoatTint(displayedInstance);
+  if (blend.active) {
+    applyPresetCoatTint(blend.from);
+    applyPresetCoatTint(blend.to);
+  }
+}
+
 function setLightPreset(presetId) {
-  if (!LIGHT_PRESETS[presetId] || presetId === activeLightId) return;
+  if (!LIGHT_PRESETS[presetId]) return;
+  if (presetId === activeLightId) {
+    updateLightPickerUi(presetId);
+    return;
+  }
   activeLightId = presetId;
+  updateLightPickerUi(presetId);
   try {
     localStorage.setItem(LIGHT_STORAGE_KEY, presetId);
   } catch {
-    /* ignore */
+    /* private mode */
   }
-  applyLightsFromPreset(presetId);
-  if (envMap) envMap.dispose();
-  envMap = buildEnvFromPreset(presetId);
-  assignEnvMap(envMap);
-  syncAllCoatUniforms();
-  lightButtons.forEach((btn) => {
-    btn.setAttribute('aria-pressed', btn.dataset.light === presetId ? 'true' : 'false');
-  });
-  const keep = presentedStage || activeStage || 'nokki';
-  if (stageCache.size) {
-    stageCache.clear();
-    displayedInstance = null;
-    rig.clear();
-    loadStage(keep, { force: true });
+  try {
+    applyLightsFromPreset(presetId);
+    const tex = getEnvMapForPreset(presetId);
+    if (tex) {
+      envMap = tex;
+      assignEnvMap(tex);
+    }
+    syncAllCoatUniforms();
+    applyPresetCoatTintAll();
+  } catch (err) {
+    console.error('setLightPreset failed', err);
   }
 }
 
@@ -536,6 +599,103 @@ function disposeCreatureGroup(group) {
 
 const COAT_MIDTONE = new THREE.Color(0x6e6488);
 const COAT_LIFT = new THREE.Color(0xd8dce8);
+
+const MIN_COAT_LUM = MOBILE ? 0.32 : 0.26;
+const COAT_GAMMA = 0.52;
+
+function liftCoatAlbedoTexture(sourceTex) {
+  if (!sourceTex?.image) return null;
+  if (textureLiftCache.has(sourceTex)) return textureLiftCache.get(sourceTex);
+
+  const img = sourceTex.image;
+  const w = img.width || img.naturalWidth;
+  const h = img.height || img.naturalHeight;
+  if (!w || !h) return null;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(img, 0, 0, w, h);
+  const id = ctx.getImageData(0, 0, w, h);
+  const emData = new Uint8ClampedArray(w * h * 4);
+
+  for (let i = 0; i < id.data.length; i += 4) {
+    let r = id.data[i] / 255;
+    let g = id.data[i + 1] / 255;
+    let b = id.data[i + 2] / 255;
+
+    r = r ** COAT_GAMMA;
+    g = g ** COAT_GAMMA;
+    b = b ** COAT_GAMMA;
+
+    let lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+
+    if (lum < MIN_COAT_LUM) {
+      const lift = MIN_COAT_LUM / Math.max(lum, 0.02);
+      r = Math.min(1, r * lift * 1.08 + 0.08);
+      g = Math.min(1, g * lift * 1.02 + 0.06);
+      b = Math.min(1, b * lift * 1.15 + 0.14);
+      r = r * 0.82 + 0.14;
+      g = g * 0.78 + 0.1;
+      b = b * 0.88 + 0.2;
+      lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    }
+
+    id.data[i] = Math.round(r * 255);
+    id.data[i + 1] = Math.round(g * 255);
+    id.data[i + 2] = Math.round(b * 255);
+
+    const hot = THREE.MathUtils.smoothstep(lum, 0.38, 0.85);
+    emData[i] = Math.round(90 + r * 120 * hot + hot * 80);
+    emData[i + 1] = Math.round(40 + g * 70 * hot);
+    emData[i + 2] = Math.round(140 + b * 100 * hot + hot * 115);
+    emData[i + 3] = Math.round(255 * hot);
+  }
+
+  ctx.putImageData(id, 0, 0);
+  const liftedMap = new THREE.CanvasTexture(canvas);
+  liftedMap.colorSpace = THREE.SRGBColorSpace;
+  liftedMap.flipY = sourceTex.flipY;
+  liftedMap.wrapS = sourceTex.wrapS;
+  liftedMap.wrapT = sourceTex.wrapT;
+  liftedMap.minFilter = THREE.LinearMipmapLinearFilter;
+  liftedMap.magFilter = THREE.LinearFilter;
+  liftedMap.generateMipmaps = true;
+  liftedMap.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  liftedMap.needsUpdate = true;
+
+  const emCanvas = document.createElement('canvas');
+  emCanvas.width = w;
+  emCanvas.height = h;
+  emCanvas.getContext('2d').putImageData(new ImageData(emData, w, h), 0, 0);
+  const emissiveMap = new THREE.CanvasTexture(emCanvas);
+  emissiveMap.colorSpace = THREE.SRGBColorSpace;
+  emissiveMap.flipY = sourceTex.flipY;
+  emissiveMap.wrapS = sourceTex.wrapS;
+  emissiveMap.wrapT = sourceTex.wrapT;
+  emissiveMap.needsUpdate = true;
+
+  const packed = { map: liftedMap, emissiveMap };
+  textureLiftCache.set(sourceTex, packed);
+  return packed;
+}
+
+function liftTexturesOnRoot(root) {
+  root.traverse((obj) => {
+    if (!obj.isMesh || !obj.material) return;
+    const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+    mats.forEach((m) => {
+      if (!m.map || m.userData?.liftProcessed) return;
+      const lifted = liftCoatAlbedoTexture(m.map);
+      if (lifted) {
+        m.userData.originalMap = m.map;
+        m.userData.liftProcessed = true;
+        m.userData.liftedPack = lifted;
+      }
+    });
+  });
+}
 
 function copyMaterialMaps(source, target) {
   if (!source) return;
@@ -614,15 +774,48 @@ function liftCoatAlbedo(color, hasTexture) {
   color.setHSL(hsl.h, hsl.s * 0.88, hsl.l);
 }
 
-function toFurPhysical(source, profile, env, { mane = false, sculpt = false, mesh = null } = {}) {
+function toCoatMaterial(source, profile, env, { mane = false, sculpt = false, mesh = null } = {}) {
+  const lifted = source?.userData?.liftedPack;
+  const preset = LIGHT_PRESETS[activeLightId];
+  const envMul = preset.envIntensity;
+
+  if (MOBILE && !sculpt) {
+    const m = new THREE.MeshStandardMaterial();
+    if (lifted) {
+      m.map = lifted.map;
+      m.emissiveMap = lifted.emissiveMap;
+      m.emissive.set(0x8868ff);
+      m.emissiveIntensity = preset.emissiveIntensity ?? 2.5;
+    } else {
+      copyMaterialMaps(source, m);
+    }
+    const tint = preset.coatTint;
+    m.color.setRGB(tint[0], tint[1], tint[2]);
+    m.metalness = 0;
+    m.roughness = 0.6;
+    m.envMap = env;
+    m.envMapIntensity = profile.envIntensity * envMul * 0.85;
+    m.userData.baseEnvMul = profile.envIntensity * 0.85;
+    m.userData.furBase = true;
+    m.userData.mobileCoat = true;
+    return m;
+  }
+
   const p = new THREE.MeshPhysicalMaterial();
-  copyMaterialMaps(source, p);
+  if (lifted) {
+    p.map = lifted.map;
+    p.emissiveMap = lifted.emissiveMap;
+    p.emissive.set(0x7040c8);
+    p.emissiveIntensity = preset.emissiveIntensity ?? 2;
+  } else {
+    copyMaterialMaps(source, p);
+  }
 
   const hasMap = !!p.map;
   const glossy = isGlossyAccent(source, mesh);
 
-  if (source?.emissive) p.emissive.copy(source.emissive);
-  if (source?.emissiveIntensity !== undefined) {
+  if (source?.emissive && !lifted) p.emissive.copy(source.emissive);
+  if (source?.emissiveIntensity !== undefined && !lifted) {
     p.emissiveIntensity = source.emissiveIntensity;
   }
 
@@ -631,7 +824,8 @@ function toFurPhysical(source, profile, env, { mane = false, sculpt = false, mes
     p.roughness = mane ? profile.roughness * 0.85 : profile.roughness * 1.05;
     p.metalness = 0;
   } else if (hasMap) {
-    liftCoatAlbedo(p.color, true);
+    const tint = preset.coatTint;
+    p.color.setRGB(tint[0], tint[1], tint[2]);
     p.roughness = glossy ? 0.38 : 0.58;
     p.metalness = 0;
   } else if (source?.color) {
@@ -646,28 +840,26 @@ function toFurPhysical(source, profile, env, { mane = false, sculpt = false, mes
   }
 
   if (glossy) {
-    p.emissiveIntensity = Math.max(p.emissiveIntensity, 2.2);
-    p.roughness = Math.min(p.roughness, 0.28);
-    p.metalness = 0;
+    p.emissiveIntensity = Math.max(p.emissiveIntensity, 2.4);
+    p.roughness = Math.min(p.roughness, 0.32);
   }
 
   const sheen =
     profile.bodySheen !== undefined ? (mane ? profile.sheen : profile.bodySheen) : profile.sheen;
-  p.sheen = glossy ? 0.25 : sheen * (hasMap ? 0.55 : 0.75);
+  p.sheen = glossy ? 0.2 : sheen * 0.5;
   p.sheenRoughness = profile.sheenRoughness;
   p.sheenColor.setHex(profile.sheenColor);
-  p.anisotropy = glossy ? 0.2 : profile.anisotropy * (hasMap ? 0.65 : 1);
+  p.anisotropy = glossy ? 0.15 : profile.anisotropy * 0.55;
   p.anisotropyRotation = 0.35;
-  p.clearcoat = glossy ? 0.45 : 0.04;
-  p.clearcoatRoughness = glossy ? 0.15 : 0.72;
+  p.clearcoat = glossy ? 0.35 : 0;
+  p.clearcoatRoughness = 0.7;
   p.envMap = env;
-  const envMul = LIGHT_PRESETS[activeLightId].envIntensity;
-  const baseEnv = glossy ? profile.envIntensity * 1.65 : profile.envIntensity * 1.15;
+  const baseEnv = glossy ? profile.envIntensity * 1.5 : profile.envIntensity * 1.1;
   p.envMapIntensity = baseEnv * envMul;
   p.userData.baseEnvMul = baseEnv;
-  p.aoMapIntensity = hasMap ? 0.72 : 1 - (profile.aoLift ?? 0) * 0.25;
+  p.aoMapIntensity = hasMap ? 0.65 : 1;
 
-  if (hasMap) {
+  if (hasMap && !MOBILE) {
     applyCoatReadabilityShader(p, getCoatOpts());
   }
 
@@ -775,7 +967,7 @@ function applyStageFur(root, stageId, env) {
 
     const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
     const newMats = mats.map((src) =>
-      toFurPhysical(src, profile, env, { mane, sculpt, mesh }),
+      toCoatMaterial(src, profile, env, { mane, sculpt, mesh }),
     );
     mesh.material = newMats.length === 1 ? newMats[0] : newMats;
     mesh.castShadow = true;
@@ -853,8 +1045,10 @@ function prepareStageRoot(gltf, stageId) {
   const root = gltf.scene;
   const cfg = STAGES[stageId];
   sanitizeGltfMaterials(root);
+  if (!cfg.sculpt) liftTexturesOnRoot(root);
   frameCreature(root, !!cfg.sculpt);
   applyStageFur(root, stageId, envMap);
+  applyPresetCoatTint(root);
   root.userData.stageId = stageId;
   return root;
 }
@@ -1098,15 +1292,29 @@ function tick(now) {
 }
 
 applyLightsFromPreset(activeLightId);
-envMap = buildEnvFromPreset(activeLightId);
-assignEnvMap(envMap);
+try {
+  envMap = getEnvMapForPreset(activeLightId);
+  if (envMap) assignEnvMap(envMap);
+} catch (err) {
+  console.warn('Initial env map failed', err);
+}
+updateLightPickerUi(activeLightId);
+
+let lastLightPickMs = 0;
+function onLightPick(evt) {
+  const btn = evt.target.closest('.light-btn');
+  if (!btn?.dataset.light) return;
+  if (evt.type === 'click' && evt.pointerType && evt.pointerType !== 'mouse') return;
+  const now = performance.now();
+  if (now - lastLightPickMs < 320) return;
+  lastLightPickMs = now;
+  evt.preventDefault();
+  setLightPreset(btn.dataset.light);
+}
 
 lightButtons.forEach((btn) => {
-  btn.setAttribute('aria-pressed', btn.dataset.light === activeLightId ? 'true' : 'false');
-  btn.addEventListener('click', () => {
-    const id = btn.dataset.light;
-    if (id && id !== activeLightId) setLightPreset(id);
-  });
+  btn.addEventListener('click', onLightPick);
+  btn.addEventListener('pointerup', onLightPick);
 });
 
 resize();
