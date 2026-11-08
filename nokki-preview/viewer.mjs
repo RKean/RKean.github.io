@@ -1,10 +1,13 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { createCoatShaderMaterial, applyShaderPresetToMaterial } from './coat-shader.mjs?v=6';
+
+const ASSET_VER = '?v=6';
 
 const STAGES = {
   nokki: {
-    file: 'models/nokki.glb',
+    file: `models/nokki.glb${ASSET_VER}`,
     label: 'Nokki',
     hint: 'Stage 1 · plush wisp coat',
     order: 0,
@@ -22,7 +25,7 @@ const STAGES = {
     },
   },
   nokkane: {
-    file: 'models/nokkane.glb',
+    file: `models/nokkane.glb${ASSET_VER}`,
     label: 'Nokkane',
     hint: 'Stage 2 · short living-shadow fur',
     order: 1,
@@ -40,7 +43,7 @@ const STAGES = {
     },
   },
   nokkara: {
-    file: 'models/nokkara.glb',
+    file: `models/nokkara.glb${ASSET_VER}`,
     label: 'Nokkara',
     hint: 'Stage 3 · dense mane (loading may take a moment)',
     order: 2,
@@ -50,8 +53,8 @@ const STAGES = {
       sheenRoughness: 0.48,
       sheenColor: 0xd8dce8,
       bodySheen: 0.42,
-      bodyColor: 0x38324a,
-      maneColor: 0xc4cad8,
+      bodyColor: 0x585068,
+      maneColor: 0xd8dce8,
       roughness: 0.62,
       coatLift: 0.05,
       anisotropy: 0.78,
@@ -86,9 +89,19 @@ const LIGHT_PRESETS = {
     exposure: { mobile: 1.85, desktop: 1.55 },
     fog: { color: 0x3a4058, density: 0.012 },
     bg: 0x4a5068,
-    coatTint: [1.15, 1.16, 1.22],
-    emissiveIntensity: 2.1,
-    coat: { mapMul: 2.35, midLift: 0.38, glow: 4.2, floor: 0.2 },
+    shader: {
+      keyDir: [-0.42, 0.78, 0.48],
+      keyColor: [2.45, 2.5, 2.65],
+      rimColor: [0.95, 1.05, 1.55],
+      wrap: 0.58,
+      rimPower: 2.2,
+      rimStrength: 0.95,
+      glow: 3.6,
+      mapMul: 2.65,
+      ambient: 0.44,
+      floor: [0.08, 0.07, 0.12],
+      tint: [1.05, 1.05, 1.1],
+    },
     envIntensity: 1.4,
     envPanels: [
       [0xffffff, 2.05, -6, 4, 2, 0, 1.1, 0],
@@ -114,9 +127,19 @@ const LIGHT_PRESETS = {
     exposure: { mobile: 1.72, desktop: 1.42 },
     fog: { color: 0x08081c, density: 0.022 },
     bg: 0x060612,
-    coatTint: [0.92, 0.96, 1.18],
-    emissiveIntensity: 2.85,
-    coat: { mapMul: 3.05, midLift: 0.55, glow: 7.2, floor: 0.22 },
+    shader: {
+      keyDir: [-0.38, 0.72, 0.52],
+      keyColor: [1.55, 1.65, 2.05],
+      rimColor: [0.55, 0.72, 1.25],
+      wrap: 0.54,
+      rimPower: 2.25,
+      rimStrength: 1.05,
+      glow: 4.8,
+      mapMul: 2.55,
+      ambient: 0.52,
+      floor: [0.08, 0.07, 0.13],
+      tint: [0.94, 0.98, 1.14],
+    },
     envIntensity: 1.15,
     envPanels: [
       [0xe8ecff, 1.75, -6, 4, 2, 0, 1.1, 0],
@@ -142,9 +165,19 @@ const LIGHT_PRESETS = {
     exposure: { mobile: 1.68, desktop: 1.38 },
     fog: { color: 0x280838, density: 0.02 },
     bg: 0x1a0828,
-    coatTint: [1.08, 0.88, 1.32],
-    emissiveIntensity: 3.4,
-    coat: { mapMul: 2.9, midLift: 0.5, glow: 8.5, floor: 0.21 },
+    shader: {
+      keyDir: [-0.35, 0.7, 0.45],
+      keyColor: [1.75, 1.45, 2.25],
+      rimColor: [1.25, 0.55, 1.55],
+      wrap: 0.5,
+      rimPower: 2.0,
+      rimStrength: 1.15,
+      glow: 6.2,
+      mapMul: 2.45,
+      ambient: 0.4,
+      floor: [0.09, 0.07, 0.14],
+      tint: [1.05, 0.9, 1.2],
+    },
     envIntensity: 1.28,
     envPanels: [
       [0xc8b0ff, 1.95, -5, 4, 2, 0, 1.0, 0],
@@ -170,9 +203,19 @@ const LIGHT_PRESETS = {
     exposure: { mobile: 1.75, desktop: 1.46 },
     fog: { color: 0x382818, density: 0.016 },
     bg: 0x4a3828,
-    coatTint: [1.22, 1.1, 0.92],
-    emissiveIntensity: 2.4,
-    coat: { mapMul: 2.75, midLift: 0.46, glow: 5.8, floor: 0.19 },
+    shader: {
+      keyDir: [-0.4, 0.75, 0.5],
+      keyColor: [2.35, 2.05, 1.55],
+      rimColor: [1.35, 1.05, 0.72],
+      wrap: 0.56,
+      rimPower: 2.15,
+      rimStrength: 0.9,
+      glow: 4.2,
+      mapMul: 2.65,
+      ambient: 0.42,
+      floor: [0.1, 0.08, 0.1],
+      tint: [1.18, 1.08, 0.95],
+    },
     envIntensity: 1.22,
     envPanels: [
       [0xfff0e0, 1.65, -5, 4, 2, 0, 1.0, 0],
@@ -206,10 +249,6 @@ function loadStoredLightId() {
 
 let activeLightId = loadStoredLightId();
 
-function getCoatOpts() {
-  return LIGHT_PRESETS[activeLightId].coat;
-}
-
 function getExposure() {
   const p = LIGHT_PRESETS[activeLightId];
   return MOBILE ? p.exposure.mobile : p.exposure.desktop;
@@ -219,9 +258,6 @@ const MOBILE =
   matchMedia('(pointer: coarse)').matches ||
   matchMedia('(max-width: 520px)').matches;
 
-/** Base mesh must read on OLED before any shell fuzz is worth it. */
-const SHELL_FUR_ENABLED = !MOBILE;
-
 let activeStage = 'nokki';
 let autoRotate = true;
 let loadToken = 0;
@@ -229,8 +265,6 @@ let defaultCam = { pos: new THREE.Vector3(), target: new THREE.Vector3() };
 let envMap = null;
 /** @type {Map<string, THREE.Texture>} */
 const envMapCache = new Map();
-/** @type {WeakMap<THREE.Texture, { map: THREE.Texture, emissiveMap: THREE.Texture }>} */
-const textureLiftCache = new WeakMap();
 
 /** @type {Map<string, THREE.Group>} */
 const stageCache = new Map();
@@ -346,26 +380,6 @@ scene.add(pedestal);
 scene.add(rig);
 
 const loader = new GLTFLoader();
-const furNoise = makeFurNoiseTexture();
-
-function makeFurNoiseTexture() {
-  const s = 64;
-  const data = new Uint8Array(s * s);
-  for (let i = 0; i < s * s; i++) {
-    const x = i % s;
-    const y = (i / s) | 0;
-    const n =
-      Math.sin(x * 0.41 + y * 0.27) * 0.5 +
-      Math.sin(x * 0.17 - y * 0.33) * 0.35 +
-      Math.random() * 0.15;
-    data[i] = Math.floor(THREE.MathUtils.clamp(n, 0, 1) * 255);
-  }
-  const tex = new THREE.DataTexture(data, s, s, THREE.RedFormat);
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(6, 6);
-  tex.needsUpdate = true;
-  return tex;
-}
 
 function buildEnvFromPreset(presetId) {
   const preset = LIGHT_PRESETS[presetId];
@@ -464,9 +478,12 @@ function assignEnvMap(tex) {
       if (!o.isMesh || !o.material) return;
       const mats = Array.isArray(o.material) ? o.material : [o.material];
       mats.forEach((m) => {
-        m.envMap = tex;
-        if (m.userData?.furBase && m.userData.baseEnvMul) {
-          m.envMapIntensity = m.userData.baseEnvMul * mul;
+        if (m.userData?.coatShader) return;
+        if (m.envMap !== undefined) {
+          m.envMap = tex;
+          if (m.userData?.baseEnvMul) {
+            m.envMapIntensity = m.userData.baseEnvMul * mul;
+          }
         }
       });
     });
@@ -479,56 +496,26 @@ function assignEnvMap(tex) {
   }
 }
 
-function syncCoatUniforms(root) {
+function getShaderPreset() {
+  return LIGHT_PRESETS[activeLightId].shader;
+}
+
+function syncShaderUniforms(root) {
   if (!root) return;
-  const coat = getCoatOpts();
+  const s = getShaderPreset();
   root.traverse((o) => {
     if (!o.isMesh) return;
     const mats = Array.isArray(o.material) ? o.material : [o.material];
-    mats.forEach((m) => {
-      const u = m.userData?.coatUniforms;
-      if (!u) return;
-      u.uMapMul.value = coat.mapMul;
-      u.uMidLift.value = coat.midLift;
-      u.uGlowStrength.value = coat.glow;
-      u.uFloor.value = coat.floor;
-    });
+    mats.forEach((m) => applyShaderPresetToMaterial(m, s));
   });
 }
 
-function syncAllCoatUniforms() {
-  for (const root of stageCache.values()) syncCoatUniforms(root);
-  syncCoatUniforms(displayedInstance);
+function syncAllShaderUniforms() {
+  for (const root of stageCache.values()) syncShaderUniforms(root);
+  syncShaderUniforms(displayedInstance);
   if (blend.active) {
-    syncCoatUniforms(blend.from);
-    syncCoatUniforms(blend.to);
-  }
-}
-
-function applyPresetCoatTint(root) {
-  if (!root) return;
-  const preset = LIGHT_PRESETS[activeLightId];
-  const tint = preset.coatTint;
-  const ei = preset.emissiveIntensity ?? 2;
-  root.traverse((o) => {
-    if (!o.isMesh) return;
-    const mats = Array.isArray(o.material) ? o.material : [o.material];
-    mats.forEach((m) => {
-      if (!m?.userData?.furBase || m.userData?.isShell) return;
-      if (m.userData.mobileCoat) {
-        m.color.setRGB(tint[0], tint[1], tint[2]);
-        m.emissiveIntensity = ei;
-      }
-    });
-  });
-}
-
-function applyPresetCoatTintAll() {
-  for (const root of stageCache.values()) applyPresetCoatTint(root);
-  applyPresetCoatTint(displayedInstance);
-  if (blend.active) {
-    applyPresetCoatTint(blend.from);
-    applyPresetCoatTint(blend.to);
+    syncShaderUniforms(blend.from);
+    syncShaderUniforms(blend.to);
   }
 }
 
@@ -552,8 +539,7 @@ function setLightPreset(presetId) {
       envMap = tex;
       assignEnvMap(tex);
     }
-    syncAllCoatUniforms();
-    applyPresetCoatTintAll();
+    syncAllShaderUniforms();
   } catch (err) {
     console.error('setLightPreset failed', err);
   }
@@ -597,389 +583,39 @@ function disposeCreatureGroup(group) {
   if (group.parent) group.parent.remove(group);
 }
 
-const COAT_MIDTONE = new THREE.Color(0x6e6488);
-const COAT_LIFT = new THREE.Color(0xd8dce8);
-
-const MIN_COAT_LUM = MOBILE ? 0.32 : 0.26;
-const COAT_GAMMA = 0.52;
-
-function liftCoatAlbedoTexture(sourceTex) {
-  if (!sourceTex?.image) return null;
-  if (textureLiftCache.has(sourceTex)) return textureLiftCache.get(sourceTex);
-
-  const img = sourceTex.image;
-  const w = img.width || img.naturalWidth;
-  const h = img.height || img.naturalHeight;
-  if (!w || !h) return null;
-
-  const canvas = document.createElement('canvas');
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext('2d', { willReadFrequently: true });
-  ctx.drawImage(img, 0, 0, w, h);
-  const id = ctx.getImageData(0, 0, w, h);
-  const emData = new Uint8ClampedArray(w * h * 4);
-
-  for (let i = 0; i < id.data.length; i += 4) {
-    let r = id.data[i] / 255;
-    let g = id.data[i + 1] / 255;
-    let b = id.data[i + 2] / 255;
-
-    r = r ** COAT_GAMMA;
-    g = g ** COAT_GAMMA;
-    b = b ** COAT_GAMMA;
-
-    let lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-
-    if (lum < MIN_COAT_LUM) {
-      const lift = MIN_COAT_LUM / Math.max(lum, 0.02);
-      r = Math.min(1, r * lift * 1.08 + 0.08);
-      g = Math.min(1, g * lift * 1.02 + 0.06);
-      b = Math.min(1, b * lift * 1.15 + 0.14);
-      r = r * 0.82 + 0.14;
-      g = g * 0.78 + 0.1;
-      b = b * 0.88 + 0.2;
-      lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-    }
-
-    id.data[i] = Math.round(r * 255);
-    id.data[i + 1] = Math.round(g * 255);
-    id.data[i + 2] = Math.round(b * 255);
-
-    const hot = THREE.MathUtils.smoothstep(lum, 0.38, 0.85);
-    emData[i] = Math.round(90 + r * 120 * hot + hot * 80);
-    emData[i + 1] = Math.round(40 + g * 70 * hot);
-    emData[i + 2] = Math.round(140 + b * 100 * hot + hot * 115);
-    emData[i + 3] = Math.round(255 * hot);
-  }
-
-  ctx.putImageData(id, 0, 0);
-  const liftedMap = new THREE.CanvasTexture(canvas);
-  liftedMap.colorSpace = THREE.SRGBColorSpace;
-  liftedMap.flipY = sourceTex.flipY;
-  liftedMap.wrapS = sourceTex.wrapS;
-  liftedMap.wrapT = sourceTex.wrapT;
-  liftedMap.minFilter = THREE.LinearMipmapLinearFilter;
-  liftedMap.magFilter = THREE.LinearFilter;
-  liftedMap.generateMipmaps = true;
-  liftedMap.anisotropy = renderer.capabilities.getMaxAnisotropy();
-  liftedMap.needsUpdate = true;
-
-  const emCanvas = document.createElement('canvas');
-  emCanvas.width = w;
-  emCanvas.height = h;
-  emCanvas.getContext('2d').putImageData(new ImageData(emData, w, h), 0, 0);
-  const emissiveMap = new THREE.CanvasTexture(emCanvas);
-  emissiveMap.colorSpace = THREE.SRGBColorSpace;
-  emissiveMap.flipY = sourceTex.flipY;
-  emissiveMap.wrapS = sourceTex.wrapS;
-  emissiveMap.wrapT = sourceTex.wrapT;
-  emissiveMap.needsUpdate = true;
-
-  const packed = { map: liftedMap, emissiveMap };
-  textureLiftCache.set(sourceTex, packed);
-  return packed;
-}
-
-function liftTexturesOnRoot(root) {
-  root.traverse((obj) => {
-    if (!obj.isMesh || !obj.material) return;
-    const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
-    mats.forEach((m) => {
-      if (!m.map || m.userData?.liftProcessed) return;
-      const lifted = liftCoatAlbedoTexture(m.map);
-      if (lifted) {
-        m.userData.originalMap = m.map;
-        m.userData.liftProcessed = true;
-        m.userData.liftedPack = lifted;
-      }
-    });
-  });
-}
-
-function copyMaterialMaps(source, target) {
-  if (!source) return;
-  for (const k of [
-    'map',
-    'normalMap',
-    'roughnessMap',
-    'metalnessMap',
-    'aoMap',
-    'emissiveMap',
-  ]) {
-    if (source[k]) {
-      target[k] = source[k];
-      if (k === 'map' || k === 'emissiveMap') target[k].colorSpace = THREE.SRGBColorSpace;
-    }
-  }
-}
-
-function isGlossyAccent(mat, mesh) {
-  const e = mat?.emissive;
-  if (e && e.r + e.g + e.b > 0.04) return true;
-  if (mat?.emissiveMap) return true;
-  if (mat?.emissiveIntensity > 0.1) return true;
-  const label = `${mat?.name || ''} ${mesh?.name || ''}`;
-  if (/eye|crystal|gem|wet|vein|glow|flame|pupil|iris/i.test(label)) return true;
-  return false;
-}
-
-/** Multiply albedo in-shader, lift midtones, floor crushed blacks, bloom eyes/flame from texture. */
-function applyCoatReadabilityShader(material, coat = getCoatOpts()) {
-  if (!material.map) return;
-  material.onBeforeCompile = (shader) => {
-    shader.uniforms.uMapMul = { value: coat.mapMul };
-    shader.uniforms.uMidLift = { value: coat.midLift };
-    shader.uniforms.uGlowStrength = { value: coat.glow };
-    shader.uniforms.uFloor = { value: coat.floor };
-    material.userData.coatUniforms = shader.uniforms;
-    shader.fragmentShader =
-      /* glsl */ `
-      uniform float uMapMul;
-      uniform float uMidLift;
-      uniform float uGlowStrength;
-      uniform float uFloor;
-    ` + shader.fragmentShader;
-    shader.fragmentShader = shader.fragmentShader.replace(
-      '#include <map_fragment>',
-      /* glsl */ `
-        #include <map_fragment>
-        diffuseColor.rgb *= uMapMul;
-        diffuseColor.rgb += vec3(uMidLift * 0.2, uMidLift * 0.16, uMidLift * 0.3);
-        vec3 coalFloor = vec3(0.18, 0.14, 0.26) * uFloor;
-        diffuseColor.rgb = max(diffuseColor.rgb, coalFloor);
-        float coatLum = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
-        float hotLo = smoothstep(0.12, 0.38, coatLum);
-        float hotHi = smoothstep(0.38, 0.82, coatLum);
-        vec3 violet = vec3(0.58, 0.38, 1.0);
-        vec3 glowCol = mix(diffuseColor.rgb, diffuseColor.rgb * violet, 0.55);
-        totalEmissiveRadiance += glowCol * (hotLo * 0.35 + hotHi * 1.0) * uGlowStrength;
-        diffuseColor.rgb = mix(diffuseColor.rgb, max(diffuseColor.rgb, glowCol * 0.75), hotHi * 0.45);
-      `,
-    );
-  };
-  material.customProgramCacheKey = () => `coat-read-${activeLightId}`;
-  material.needsUpdate = true;
-}
-
-function liftCoatAlbedo(color, hasTexture) {
-  if (hasTexture) {
-    color.setRGB(1.35, 1.3, 1.45);
-  }
-  color.lerp(COAT_LIFT, hasTexture ? 0.22 : 0.4);
-  color.lerp(COAT_MIDTONE, hasTexture ? 0.12 : 0.28);
-  const hsl = { h: 0, s: 0, l: 0 };
-  color.getHSL(hsl);
-  if (hsl.l < 0.34) hsl.l = 0.34;
-  color.setHSL(hsl.h, hsl.s * 0.88, hsl.l);
-}
-
-function toCoatMaterial(source, profile, env, { mane = false, sculpt = false, mesh = null } = {}) {
-  const lifted = source?.userData?.liftedPack;
-  const preset = LIGHT_PRESETS[activeLightId];
-  const envMul = preset.envIntensity;
-
-  if (MOBILE && !sculpt) {
-    const m = new THREE.MeshStandardMaterial();
-    if (lifted) {
-      m.map = lifted.map;
-      m.emissiveMap = lifted.emissiveMap;
-      m.emissive.set(0x8868ff);
-      m.emissiveIntensity = preset.emissiveIntensity ?? 2.5;
-    } else {
-      copyMaterialMaps(source, m);
-    }
-    const tint = preset.coatTint;
-    m.color.setRGB(tint[0], tint[1], tint[2]);
-    m.metalness = 0;
-    m.roughness = 0.6;
-    m.envMap = env;
-    m.envMapIntensity = profile.envIntensity * envMul * 0.85;
-    m.userData.baseEnvMul = profile.envIntensity * 0.85;
-    m.userData.furBase = true;
-    m.userData.mobileCoat = true;
-    return m;
-  }
-
-  const p = new THREE.MeshPhysicalMaterial();
-  if (lifted) {
-    p.map = lifted.map;
-    p.emissiveMap = lifted.emissiveMap;
-    p.emissive.set(0x7040c8);
-    p.emissiveIntensity = preset.emissiveIntensity ?? 2;
-  } else {
-    copyMaterialMaps(source, p);
-  }
-
-  const hasMap = !!p.map;
-  const glossy = isGlossyAccent(source, mesh);
-
-  if (source?.emissive && !lifted) p.emissive.copy(source.emissive);
-  if (source?.emissiveIntensity !== undefined && !lifted) {
-    p.emissiveIntensity = source.emissiveIntensity;
-  }
-
-  if (sculpt) {
-    p.color.setHex(mane ? profile.maneColor : profile.bodyColor);
-    p.roughness = mane ? profile.roughness * 0.85 : profile.roughness * 1.05;
-    p.metalness = 0;
-  } else if (hasMap) {
-    const tint = preset.coatTint;
-    p.color.setRGB(tint[0], tint[1], tint[2]);
-    p.roughness = glossy ? 0.38 : 0.58;
-    p.metalness = 0;
-  } else if (source?.color) {
-    p.color.copy(source.color);
-    liftCoatAlbedo(p.color, false);
-    p.roughness = THREE.MathUtils.clamp((source.roughness ?? profile.roughness) * 0.8, 0.35, 0.72);
-    p.metalness = 0;
-  } else {
-    p.color.copy(COAT_MIDTONE);
-    p.roughness = profile.roughness;
-    p.metalness = 0;
-  }
-
-  if (glossy) {
-    p.emissiveIntensity = Math.max(p.emissiveIntensity, 2.4);
-    p.roughness = Math.min(p.roughness, 0.32);
-  }
-
-  const sheen =
-    profile.bodySheen !== undefined ? (mane ? profile.sheen : profile.bodySheen) : profile.sheen;
-  p.sheen = glossy ? 0.2 : sheen * 0.5;
-  p.sheenRoughness = profile.sheenRoughness;
-  p.sheenColor.setHex(profile.sheenColor);
-  p.anisotropy = glossy ? 0.15 : profile.anisotropy * 0.55;
-  p.anisotropyRotation = 0.35;
-  p.clearcoat = glossy ? 0.35 : 0;
-  p.clearcoatRoughness = 0.7;
-  p.envMap = env;
-  const baseEnv = glossy ? profile.envIntensity * 1.5 : profile.envIntensity * 1.1;
-  p.envMapIntensity = baseEnv * envMul;
-  p.userData.baseEnvMul = baseEnv;
-  p.aoMapIntensity = hasMap ? 0.65 : 1;
-
-  if (hasMap && !MOBILE) {
-    applyCoatReadabilityShader(p, getCoatOpts());
-  }
-
-  p.userData.furBase = true;
-  return p;
-}
-
-function addShellFur(mesh, profile, env, { mane = false, layers = 2 } = {}) {
-  if (!SHELL_FUR_ENABLED) return [];
-  const shells = [];
-  const spread = profile.shellSpread * (mane ? 1.2 : 1);
-  const baseSheen = mane && profile.bodySheen !== undefined ? profile.sheen : profile.sheen;
-  const layerCount = Math.min(layers, 2);
-
-  for (let i = 1; i <= layerCount; i++) {
-    const t = i / layerCount;
-    const shellMat = new THREE.MeshPhysicalMaterial({
-      color: profile.sheenColor,
-      transparent: true,
-      opacity: 0.028 - t * 0.008,
-      depthWrite: false,
-      side: THREE.BackSide,
-      blending: THREE.AdditiveBlending,
-      roughness: 0.95,
-      metalness: 0,
-      sheen: baseSheen * (0.35 + t * 0.25),
-      sheenRoughness: profile.sheenRoughness + 0.12,
-      sheenColor: new THREE.Color(profile.sheenColor),
-      envMap: env,
-      envMapIntensity: profile.envIntensity * 0.35,
-    });
-    shellMat.userData.isShell = true;
-
-    const shell = mesh.clone();
-    shell.material = shellMat;
-    shell.castShadow = false;
-    shell.receiveShadow = false;
-    shell.renderOrder = mesh.renderOrder + i;
-    const inflate = spread * i;
-    shellMat.onBeforeCompile = (shader) => {
-      shader.uniforms.uInflate = { value: inflate };
-      shader.uniforms.uNoise = { value: furNoise };
-      shader.vertexShader =
-        'uniform float uInflate;\nuniform sampler2D uNoise;\n' + shader.vertexShader;
-      shader.vertexShader = shader.vertexShader.replace(
-        '#include <begin_vertex>',
-        /* glsl */ `
-          #include <begin_vertex>
-          #ifdef USE_UV
-            float strand = texture2D(uNoise, uv * 5.0).r;
-            float push = uInflate * (0.65 + strand * 0.55);
-            transformed += normal * push;
-          #else
-            transformed += normal * uInflate;
-          #endif
-        `,
-      );
-      shader.fragmentShader =
-        'uniform sampler2D uNoise;\n' + shader.fragmentShader;
-      shader.fragmentShader = shader.fragmentShader.replace(
-        '#include <opaque_fragment>',
-        /* glsl */ `
-          #ifdef USE_UV
-            float fuzz = texture2D(uNoise, vUv * 8.0).r;
-            diffuseColor.a *= smoothstep(0.2, 0.9, fuzz);
-          #endif
-          #include <opaque_fragment>
-        `,
-      );
-    };
-
-    mesh.parent.add(shell);
-    shells.push(shell);
-  }
-  return shells;
-}
-
-function applyStageFur(root, stageId, env) {
+function applyStageCoat(root, stageId) {
   const cfg = STAGES[stageId];
   const profile = cfg.fur;
   const sculpt = !!cfg.sculpt;
+  const shaderPreset = getShaderPreset();
 
   const box = new THREE.Box3().setFromObject(root);
   const height = box.max.y - box.min.y || 1;
   const maneY = box.min.y + height * 0.58;
 
-  const meshStats = [];
-  root.traverse((obj) => {
-    if (obj.isMesh && obj.geometry) {
-      const tri = obj.geometry.index
-        ? obj.geometry.index.count / 3
-        : obj.geometry.attributes.position.count / 3;
-      meshStats.push({ mesh: obj, tri });
-    }
-  });
-  meshStats.sort((a, b) => b.tri - a.tri);
-
-  let shellBudget = SHELL_FUR_ENABLED ? (sculpt ? profile.shellMeshBudget ?? 4 : 1) : 0;
-  let shellLayers = SHELL_FUR_ENABLED ? Math.min(profile.shells, 2) : 0;
-
-  meshStats.forEach(({ mesh, tri }, idx) => {
+  root.traverse((mesh) => {
+    if (!mesh.isMesh || !mesh.material) return;
     const meshBox = new THREE.Box3().setFromObject(mesh);
     const centerY = (meshBox.max.y + meshBox.min.y) * 0.5;
-    const mane = sculpt ? centerY >= maneY : centerY >= maneY * 0.92;
+    const mane = sculpt ? centerY >= maneY : false;
 
-    const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-    const newMats = mats.map((src) =>
-      toCoatMaterial(src, profile, env, { mane, sculpt, mesh }),
-    );
-    mesh.material = newMats.length === 1 ? newMats[0] : newMats;
-    mesh.castShadow = true;
-    mesh.receiveShadow = false;
-
-    if (
-      SHELL_FUR_ENABLED &&
-      idx < shellBudget &&
-      tri < (profile.triangleShellCap ?? Infinity)
-    ) {
-      addShellFur(mesh, profile, env, { mane, layers: shellLayers });
+    const src = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
+    let map = src?.map ?? null;
+    if (map) {
+      map.colorSpace = THREE.SRGBColorSpace;
+      map.anisotropy = renderer.capabilities.getMaxAnisotropy();
     }
+
+    mesh.material = createCoatShaderMaterial({
+      map: sculpt ? null : map,
+      shaderPreset,
+      sculpt,
+      mane,
+      bodyColor: profile.bodyColor ?? 0x38324a,
+      maneColor: profile.maneColor ?? 0xb8c0d8,
+    });
+    mesh.castShadow = !MOBILE;
+    mesh.receiveShadow = false;
   });
 
   root.userData.furApplied = true;
@@ -1045,10 +681,8 @@ function prepareStageRoot(gltf, stageId) {
   const root = gltf.scene;
   const cfg = STAGES[stageId];
   sanitizeGltfMaterials(root);
-  if (!cfg.sculpt) liftTexturesOnRoot(root);
   frameCreature(root, !!cfg.sculpt);
-  applyStageFur(root, stageId, envMap);
-  applyPresetCoatTint(root);
+  applyStageCoat(root, stageId);
   root.userData.stageId = stageId;
   return root;
 }
@@ -1056,13 +690,7 @@ function prepareStageRoot(gltf, stageId) {
 function instantiateFromCache(stageId) {
   const template = stageCache.get(stageId);
   const instance = template.clone(true);
-  instance.traverse((o) => {
-    if (!o.isMesh || !o.material) return;
-    const mats = Array.isArray(o.material) ? o.material : [o.material];
-    mats.forEach((m) => {
-      m.envMap = envMap;
-    });
-  });
+  syncShaderUniforms(instance);
   return instance;
 }
 
