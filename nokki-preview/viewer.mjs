@@ -50,8 +50,8 @@ const STAGES = {
       sheenRoughness: 0.48,
       sheenColor: 0xd8dce8,
       bodySheen: 0.42,
-      bodyColor: 0x22202c,
-      maneColor: 0xaeb6ca,
+      bodyColor: 0x38324a,
+      maneColor: 0xc4cad8,
       roughness: 0.62,
       coatLift: 0.05,
       anisotropy: 0.78,
@@ -77,6 +77,9 @@ const btnReset = document.getElementById('btn-reset');
 const MOBILE =
   matchMedia('(pointer: coarse)').matches ||
   matchMedia('(max-width: 520px)').matches;
+
+/** Base mesh must read on OLED before any shell fuzz is worth it. */
+const SHELL_FUR_ENABLED = !MOBILE;
 
 let activeStage = 'nokki';
 let autoRotate = true;
@@ -114,14 +117,14 @@ const renderer = new THREE.WebGLRenderer({
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, MOBILE ? 1.65 : 2));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.15;
+renderer.toneMappingExposure = MOBILE ? 1.38 : 1.22;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 host.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x05040a);
-scene.fog = new THREE.FogExp2(0x0a0812, 0.038);
+scene.fog = new THREE.FogExp2(0x0a0812, MOBILE ? 0.028 : 0.038);
 
 const camera = new THREE.PerspectiveCamera(42, 1, 0.05, 120);
 camera.position.set(0, 1.15, 3.2);
@@ -141,16 +144,16 @@ controls.touches = {
   TWO: THREE.TOUCH.DOLLY_PAN,
 };
 
-scene.add(new THREE.AmbientLight(0x9aa4bc, 0.52));
+scene.add(new THREE.AmbientLight(0xb0b8d0, MOBILE ? 0.72 : 0.58));
 
-const hemi = new THREE.HemisphereLight(0xc8d4ec, 0x18121c, 1.18);
+const hemi = new THREE.HemisphereLight(0xdce4f8, 0x2a2438, MOBILE ? 1.42 : 1.22);
 scene.add(hemi);
 
 const moonFill = new THREE.DirectionalLight(0x9aaec8, 0.42);
 moonFill.position.set(2, 3, 5);
 scene.add(moonFill);
 
-const moonKey = new THREE.DirectionalLight(0xb8c8e8, 2.35);
+const moonKey = new THREE.DirectionalLight(0xd0dcf0, MOBILE ? 2.65 : 2.35);
 moonKey.position.set(-3.5, 6.5, 4.5);
 moonKey.castShadow = true;
 moonKey.shadow.mapSize.set(MOBILE ? 768 : 1024, MOBILE ? 768 : 1024);
@@ -162,9 +165,13 @@ const violetRim = new THREE.DirectionalLight(0x6b4a9e, 1.25);
 violetRim.position.set(4.5, 2.5, -5);
 scene.add(violetRim);
 
-const softFront = new THREE.DirectionalLight(0x7a6d8c, 0.48);
+const softFront = new THREE.DirectionalLight(0x9aa8c8, MOBILE ? 0.92 : 0.48);
 softFront.position.set(0, 1, 3);
 scene.add(softFront);
+
+const faceLift = new THREE.PointLight(0xd8dcf0, MOBILE ? 1.05 : 0.45, 10);
+faceLift.position.set(0.4, 1.35, 2.8);
+scene.add(faceLift);
 
 const groundMat = new THREE.MeshPhysicalMaterial({
   color: 0x0a0810,
@@ -236,10 +243,10 @@ function buildNightStudioEnv(renderer) {
     envScene.add(m);
   };
 
-  addPanel(0xc8d4f0, 1.4, new THREE.Vector3(-6, 4, 2), new THREE.Euler(0, Math.PI * 0.35, 0));
-  addPanel(0x5c3d8f, 0.9, new THREE.Vector3(6, 2, -4), new THREE.Euler(0, -Math.PI * 0.5, 0));
-  addPanel(0x8899b0, 0.55, new THREE.Vector3(0, 6, 0), new THREE.Euler(-Math.PI / 2, 0, 0));
-  addPanel(0x2a2438, 0.35, new THREE.Vector3(0, -4, 0), new THREE.Euler(Math.PI / 2, 0, 0));
+  addPanel(0xe8ecff, 1.65, new THREE.Vector3(-6, 4, 2), new THREE.Euler(0, Math.PI * 0.35, 0));
+  addPanel(0x8b6ac8, 1.15, new THREE.Vector3(6, 2, -4), new THREE.Euler(0, -Math.PI * 0.5, 0));
+  addPanel(0xb0bcd8, 0.85, new THREE.Vector3(0, 6, 0), new THREE.Euler(-Math.PI / 2, 0, 0));
+  addPanel(0x3d3550, 0.45, new THREE.Vector3(0, -4, 0), new THREE.Euler(Math.PI / 2, 0, 0));
 
   const envTex = pmrem.fromScene(envScene, 0.06).texture;
   pmrem.dispose();
@@ -290,82 +297,153 @@ function disposeCreatureGroup(group) {
   if (group.parent) group.parent.remove(group);
 }
 
-function isGlossyAccent(mat) {
+const COAT_MIDTONE = new THREE.Color(0x5c5470);
+const COAT_LIFT = new THREE.Color(0xc8cce0);
+
+function copyMaterialMaps(source, target) {
+  if (!source) return;
+  for (const k of [
+    'map',
+    'normalMap',
+    'roughnessMap',
+    'metalnessMap',
+    'aoMap',
+    'emissiveMap',
+  ]) {
+    if (source[k]) {
+      target[k] = source[k];
+      if (k === 'map' || k === 'emissiveMap') target[k].colorSpace = THREE.SRGBColorSpace;
+    }
+  }
+}
+
+function isGlossyAccent(mat, mesh) {
   const e = mat?.emissive;
-  if (e && (e.r + e.g + e.b > 0.08)) return true;
-  if (mat?.metalness > 0.35) return true;
-  if (mat?.name && /eye|crystal|gem|wet|vein|glow/i.test(mat.name)) return true;
+  if (e && e.r + e.g + e.b > 0.04) return true;
+  if (mat?.emissiveMap) return true;
+  if (mat?.emissiveIntensity > 0.1) return true;
+  const label = `${mat?.name || ''} ${mesh?.name || ''}`;
+  if (/eye|crystal|gem|wet|vein|glow|flame|pupil|iris/i.test(label)) return true;
   return false;
 }
 
-function toFurPhysical(source, profile, env, { mane = false, sculpt = false } = {}) {
+/** Eyes / flame live in the albedo on these GLBs — bloom bright texels into emissive. */
+function applyAlbedoEmissiveBoost(material, strength = 2.8) {
+  if (!material.map) return;
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.uGlowStrength = { value: strength };
+    shader.fragmentShader =
+      /* glsl */ `uniform float uGlowStrength;\n` + shader.fragmentShader;
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <map_fragment>',
+      /* glsl */ `
+        #include <map_fragment>
+        float coatLum = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+        float hot = smoothstep(0.22, 0.58, coatLum);
+        vec3 violet = vec3(0.62, 0.42, 1.0);
+        vec3 glowCol = mix(diffuseColor.rgb, diffuseColor.rgb * violet, 0.45);
+        totalEmissiveRadiance += glowCol * hot * uGlowStrength;
+        diffuseColor.rgb = mix(diffuseColor.rgb, max(diffuseColor.rgb, glowCol * 0.55), hot * 0.35);
+      `,
+    );
+  };
+  material.customProgramCacheKey = () => `albedo-glow-${strength}`;
+}
+
+function liftCoatAlbedo(color, hasTexture) {
+  if (hasTexture) {
+    color.setRGB(1.12, 1.1, 1.18);
+  }
+  color.lerp(COAT_LIFT, hasTexture ? 0.14 : 0.35);
+  color.lerp(COAT_MIDTONE, hasTexture ? 0.06 : 0.2);
+  const hsl = { h: 0, s: 0, l: 0 };
+  color.getHSL(hsl);
+  hsl.l = THREE.MathUtils.clamp(hsl.l, 0, 1);
+  if (hsl.l < 0.22) hsl.l = 0.22;
+  color.setHSL(hsl.h, hsl.s * 0.92, hsl.l);
+}
+
+function toFurPhysical(source, profile, env, { mane = false, sculpt = false, mesh = null } = {}) {
   const p = new THREE.MeshPhysicalMaterial();
-  const maps = ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'metalnessMap', 'aoMap', 'emissiveMap'];
-  maps.forEach((k) => {
-    if (source?.[k]) p[k] = source[k];
-  });
+  copyMaterialMaps(source, p);
 
-  if (source?.color) p.color.copy(source.color);
+  const hasMap = !!p.map;
+  const glossy = isGlossyAccent(source, mesh);
+
   if (source?.emissive) p.emissive.copy(source.emissive);
-  if (source?.emissiveIntensity !== undefined) p.emissiveIntensity = source.emissiveIntensity;
-
-  const glossy = isGlossyAccent(source);
+  if (source?.emissiveIntensity !== undefined) {
+    p.emissiveIntensity = source.emissiveIntensity;
+  }
 
   if (sculpt) {
     p.color.setHex(mane ? profile.maneColor : profile.bodyColor);
     p.roughness = mane ? profile.roughness * 0.85 : profile.roughness * 1.05;
+    p.metalness = 0.06;
+  } else if (hasMap) {
+    liftCoatAlbedo(p.color, true);
+    p.roughness = glossy ? 0.35 : 0.62;
+    p.metalness = 0;
   } else if (source?.color) {
     p.color.copy(source.color);
-    p.color.lerp(new THREE.Color(profile.sheenColor), 0.11);
-    p.color.multiplyScalar(1 + profile.coatLift);
-    if (source.roughness !== undefined) {
-      p.roughness = THREE.MathUtils.clamp(source.roughness + 0.05, 0.42, 0.88);
-    } else {
-      p.roughness = profile.roughness;
-    }
+    liftCoatAlbedo(p.color, false);
+    p.roughness = THREE.MathUtils.clamp((source.roughness ?? profile.roughness) * 0.85, 0.38, 0.78);
+    p.metalness = glossy ? 0.12 : 0;
   } else {
+    p.color.copy(COAT_MIDTONE);
     p.roughness = profile.roughness;
+    p.metalness = 0.04;
+  }
+
+  if (glossy) {
+    p.emissiveIntensity = Math.max(p.emissiveIntensity, 1.4);
+    p.roughness = Math.min(p.roughness, 0.32);
+    p.metalness = Math.min(p.metalness, 0.2);
   }
 
   const sheen =
     profile.bodySheen !== undefined ? (mane ? profile.sheen : profile.bodySheen) : profile.sheen;
-  p.sheen = glossy ? Math.min(0.35, sheen * 0.4) : sheen;
+  p.sheen = glossy ? 0.25 : sheen * (hasMap ? 0.55 : 0.75);
   p.sheenRoughness = profile.sheenRoughness;
   p.sheenColor.setHex(profile.sheenColor);
-  p.metalness = glossy ? Math.max(0.15, source?.metalness ?? 0.1) : 0.04;
-  p.anisotropy = glossy ? 0.15 : profile.anisotropy;
+  p.anisotropy = glossy ? 0.2 : profile.anisotropy * (hasMap ? 0.65 : 1);
   p.anisotropyRotation = 0.35;
-  p.clearcoat = glossy ? 0.55 : 0.08;
-  p.clearcoatRoughness = glossy ? 0.18 : 0.65;
+  p.clearcoat = glossy ? 0.45 : 0.04;
+  p.clearcoatRoughness = glossy ? 0.15 : 0.72;
   p.envMap = env;
-  p.envMapIntensity = glossy ? profile.envIntensity * 1.65 : profile.envIntensity;
-  p.aoMapIntensity = 1 - (profile.aoLift ?? 0);
+  p.envMapIntensity = glossy ? profile.envIntensity * 1.8 : profile.envIntensity * (MOBILE ? 1.25 : 1.05);
+  p.aoMapIntensity = hasMap ? 1.08 : 1 - (profile.aoLift ?? 0) * 0.35;
+
+  if (hasMap && !glossy) {
+    applyAlbedoEmissiveBoost(p, MOBILE ? 3.4 : 2.6);
+  }
 
   p.userData.furBase = true;
   return p;
 }
 
 function addShellFur(mesh, profile, env, { mane = false, layers = 2 } = {}) {
+  if (!SHELL_FUR_ENABLED) return [];
   const shells = [];
-  const spread = profile.shellSpread * (mane ? 1.35 : 1);
+  const spread = profile.shellSpread * (mane ? 1.2 : 1);
   const baseSheen = mane && profile.bodySheen !== undefined ? profile.sheen : profile.sheen;
+  const layerCount = Math.min(layers, 2);
 
-  for (let i = 1; i <= layers; i++) {
-    const t = i / layers;
+  for (let i = 1; i <= layerCount; i++) {
+    const t = i / layerCount;
     const shellMat = new THREE.MeshPhysicalMaterial({
-      color: 0x101018,
+      color: profile.sheenColor,
       transparent: true,
-      opacity: (0.11 - t * 0.04) * (mane ? 1.2 : 1),
+      opacity: 0.028 - t * 0.008,
       depthWrite: false,
       side: THREE.BackSide,
-      roughness: 0.9,
+      blending: THREE.AdditiveBlending,
+      roughness: 0.95,
       metalness: 0,
-      sheen: baseSheen * (0.55 + t * 0.35),
-      sheenRoughness: profile.sheenRoughness + 0.08,
+      sheen: baseSheen * (0.35 + t * 0.25),
+      sheenRoughness: profile.sheenRoughness + 0.12,
       sheenColor: new THREE.Color(profile.sheenColor),
-      anisotropy: profile.anisotropy * 0.85,
       envMap: env,
-      envMapIntensity: profile.envIntensity * 0.6,
+      envMapIntensity: profile.envIntensity * 0.35,
     });
     shellMat.userData.isShell = true;
 
@@ -375,17 +453,14 @@ function addShellFur(mesh, profile, env, { mane = false, layers = 2 } = {}) {
     shell.receiveShadow = false;
     shell.renderOrder = mesh.renderOrder + i;
     const inflate = spread * i;
-    if (MOBILE) {
-      shell.scale.multiplyScalar(1 + inflate * 4.2);
-    } else {
-      shellMat.onBeforeCompile = (shader) => {
-        shader.uniforms.uInflate = { value: inflate };
-        shader.uniforms.uNoise = { value: furNoise };
-        shader.vertexShader =
-          'uniform float uInflate;\nuniform sampler2D uNoise;\n' + shader.vertexShader;
-        shader.vertexShader = shader.vertexShader.replace(
-          '#include <begin_vertex>',
-          /* glsl */ `
+    shellMat.onBeforeCompile = (shader) => {
+      shader.uniforms.uInflate = { value: inflate };
+      shader.uniforms.uNoise = { value: furNoise };
+      shader.vertexShader =
+        'uniform float uInflate;\nuniform sampler2D uNoise;\n' + shader.vertexShader;
+      shader.vertexShader = shader.vertexShader.replace(
+        '#include <begin_vertex>',
+        /* glsl */ `
           #include <begin_vertex>
           #ifdef USE_UV
             float strand = texture2D(uNoise, uv * 5.0).r;
@@ -395,21 +470,20 @@ function addShellFur(mesh, profile, env, { mane = false, layers = 2 } = {}) {
             transformed += normal * uInflate;
           #endif
         `,
-        );
-        shader.fragmentShader =
-          'uniform sampler2D uNoise;\n' + shader.fragmentShader;
-        shader.fragmentShader = shader.fragmentShader.replace(
-          '#include <opaque_fragment>',
-          /* glsl */ `
+      );
+      shader.fragmentShader =
+        'uniform sampler2D uNoise;\n' + shader.fragmentShader;
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <opaque_fragment>',
+        /* glsl */ `
           #ifdef USE_UV
             float fuzz = texture2D(uNoise, vUv * 8.0).r;
-            diffuseColor.a *= smoothstep(0.15, 0.85, fuzz);
+            diffuseColor.a *= smoothstep(0.2, 0.9, fuzz);
           #endif
           #include <opaque_fragment>
         `,
-        );
-      };
-    }
+      );
+    };
 
     mesh.parent.add(shell);
     shells.push(shell);
@@ -437,24 +511,27 @@ function applyStageFur(root, stageId, env) {
   });
   meshStats.sort((a, b) => b.tri - a.tri);
 
-  let shellBudget = sculpt && MOBILE ? profile.shellMeshBudget ?? 8 : meshStats.length;
-  let shellLayers = profile.shells;
-  if (sculpt && MOBILE && profile.mobileShells !== undefined) {
-    shellLayers = profile.mobileShells;
-  }
+  let shellBudget = SHELL_FUR_ENABLED ? (sculpt ? profile.shellMeshBudget ?? 4 : 1) : 0;
+  let shellLayers = SHELL_FUR_ENABLED ? Math.min(profile.shells, 2) : 0;
 
   meshStats.forEach(({ mesh, tri }, idx) => {
     const meshBox = new THREE.Box3().setFromObject(mesh);
     const centerY = (meshBox.max.y + meshBox.min.y) * 0.5;
     const mane = sculpt ? centerY >= maneY : centerY >= maneY * 0.92;
 
-    const src = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
-    const furMat = toFurPhysical(src, profile, env, { mane, sculpt });
-    mesh.material = furMat;
+    const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    const newMats = mats.map((src) =>
+      toFurPhysical(src, profile, env, { mane, sculpt, mesh }),
+    );
+    mesh.material = newMats.length === 1 ? newMats[0] : newMats;
     mesh.castShadow = true;
     mesh.receiveShadow = false;
 
-    if (idx < shellBudget && tri < (profile.triangleShellCap ?? Infinity)) {
+    if (
+      SHELL_FUR_ENABLED &&
+      idx < shellBudget &&
+      tri < (profile.triangleShellCap ?? Infinity)
+    ) {
       addShellFur(mesh, profile, env, { mane, layers: shellLayers });
     }
   });
@@ -493,7 +570,7 @@ function setCreatureOpacity(group, alpha) {
     if (!obj.isMesh) return;
     const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
     mats.forEach((m) => {
-      if (!m) return;
+      if (!m || m.userData?.isShell) return;
       m.transparent = alpha < 0.999;
       m.opacity = alpha;
       m.depthWrite = alpha > 0.92;
@@ -501,9 +578,27 @@ function setCreatureOpacity(group, alpha) {
   });
 }
 
+function sanitizeGltfMaterials(root) {
+  root.traverse((obj) => {
+    if (!obj.isMesh || !obj.material) return;
+    const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+    mats.forEach((m) => {
+      if (m.map) {
+        m.map.colorSpace = THREE.SRGBColorSpace;
+        m.map.anisotropy = renderer.capabilities.getMaxAnisotropy();
+      }
+      if (m.map && m.metalness >= 0.9) {
+        m.metalness = 0;
+        m.roughness = THREE.MathUtils.clamp(m.roughness * 0.55, 0.35, 0.75);
+      }
+    });
+  });
+}
+
 function prepareStageRoot(gltf, stageId) {
   const root = gltf.scene;
   const cfg = STAGES[stageId];
+  sanitizeGltfMaterials(root);
   frameCreature(root, !!cfg.sculpt);
   applyStageFur(root, stageId, envMap);
   root.userData.stageId = stageId;
