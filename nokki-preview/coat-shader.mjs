@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 
+export const TEXTURED_FALLBACK = new THREE.Vector3(0.16, 0.14, 0.22);
+
 export const COAT_VERT = /* glsl */ `
 varying vec2 vUv;
 varying vec3 vNormalW;
@@ -54,12 +56,13 @@ void main() {
   float fresnel = pow(1.0 - clamp(abs(dot(N, V)), 0.0, 1.0), uRimPower);
   vec3 rim = uRimColor * fresnel * uRimStrength;
 
-  float hot = smoothstep(0.02, 0.12, rawLum);
-  float hotHi = smoothstep(0.12, 0.42, rawLum);
-  vec3 glowCol = mix(raw, raw * vec3(0.7, 0.45, 1.0), 0.65);
-  vec3 glow = glowCol * (hot * 0.55 + hotHi * 2.4) * uGlow;
+  float eyeHot = smoothstep(0.18, 0.45, rawLum);
+  vec3 glowCol = mix(raw, raw * vec3(0.62, 0.42, 1.0), 0.55);
+  vec3 glow = glowCol * eyeHot * uGlow;
 
   vec3 col = diffuse + rim + glow + coat * uAmbient;
+  col = col / (col + vec3(1.0));
+  col = min(col, vec3(1.0));
   gl_FragColor = vec4(col, 1.0);
 }
 `;
@@ -67,17 +70,25 @@ void main() {
 let _dummyMap = null;
 function dummyMap() {
   if (!_dummyMap) {
-    _dummyMap = new THREE.DataTexture(new Uint8Array([120, 110, 140, 255]), 1, 1, THREE.RGBAFormat);
-    _dummyMap.colorSpace = THREE.SRGBColorSpace;
+    _dummyMap = new THREE.DataTexture(new Uint8Array([40, 36, 56, 255]), 1, 1, THREE.RGBAFormat);
+    _dummyMap.colorSpace = THREE.NoColorSpace;
     _dummyMap.needsUpdate = true;
   }
   return _dummyMap;
 }
 
+export function textureReady(tex) {
+  if (!tex?.image) return false;
+  const img = tex.image;
+  const w = img.width ?? img.naturalWidth ?? img.displayWidth ?? 0;
+  const h = img.height ?? img.naturalHeight ?? img.displayHeight ?? 0;
+  return w > 0 && h > 0;
+}
+
 /** @param {object} opts */
 export function createCoatShaderMaterial(opts) {
   const {
-    map = null,
+    map: mapIn = null,
     shaderPreset: s,
     sculpt = false,
     mane = false,
@@ -85,10 +96,20 @@ export function createCoatShaderMaterial(opts) {
     maneColor = 0xb8c0d8,
   } = opts;
 
-  const floor = new THREE.Vector3(...(s.floor || [0.08, 0.07, 0.12]));
+  const floor = new THREE.Vector3(...(s.floor || [0.07, 0.06, 0.1]));
   const tint = new THREE.Vector3(...(s.tint || [1, 1, 1]));
 
-  const base = new THREE.Color(mane ? maneColor : bodyColor);
+  const useMap = mapIn && textureReady(mapIn);
+  let map = null;
+  if (useMap) {
+    map = mapIn;
+    map.colorSpace = THREE.NoColorSpace;
+  }
+
+  const base = sculpt
+    ? new THREE.Color(mane ? maneColor : bodyColor)
+    : new THREE.Color().setRGB(TEXTURED_FALLBACK.x, TEXTURED_FALLBACK.y, TEXTURED_FALLBACK.z);
+
   const uniforms = {
     map: { value: map || dummyMap() },
     uKeyDir: { value: new THREE.Vector3(...s.keyDir).normalize() },
@@ -96,13 +117,13 @@ export function createCoatShaderMaterial(opts) {
     uRimColor: { value: new THREE.Color(...s.rimColor) },
     uWrap: { value: s.wrap ?? 0.5 },
     uRimPower: { value: s.rimPower ?? 2.2 },
-    uRimStrength: { value: s.rimStrength ?? 0.9 },
-    uGlow: { value: s.glow ?? 3 },
-    uMapMul: { value: s.mapMul ?? 2.4 },
+    uRimStrength: { value: s.rimStrength ?? 0.55 },
+    uGlow: { value: s.glow ?? 1.25 },
+    uMapMul: { value: s.mapMul ?? 2.1 },
     uCoatFloor: { value: floor },
     uTint: { value: tint },
-    uAmbient: { value: s.ambient ?? 0.35 },
-    uHasMap: { value: map ? 1 : 0 },
+    uAmbient: { value: s.ambient ?? 0.22 },
+    uHasMap: { value: useMap ? 1 : 0 },
     uBaseColor: {
       value: new THREE.Vector3(base.r, base.g, base.b),
     },
@@ -120,13 +141,13 @@ export function createCoatShaderMaterial(opts) {
   });
 
   if (map) {
-    map.colorSpace = THREE.SRGBColorSpace;
+    mat.map = map;
   }
 
   mat.userData.coatShader = true;
   mat.userData.sculpt = sculpt;
   mat.userData.mane = mane;
-  mat.userData.shaderPresetRef = s;
+  mat.userData.coatMap = map;
   return mat;
 }
 
@@ -138,10 +159,10 @@ export function applyShaderPresetToMaterial(mat, s) {
   mat.uniforms.uRimColor.value.setRGB(...s.rimColor);
   mat.uniforms.uWrap.value = s.wrap ?? 0.5;
   mat.uniforms.uRimPower.value = s.rimPower ?? 2.2;
-  mat.uniforms.uRimStrength.value = s.rimStrength ?? 0.9;
-  mat.uniforms.uGlow.value = s.glow ?? 3;
-  mat.uniforms.uMapMul.value = s.mapMul ?? 2.4;
-  mat.uniforms.uCoatFloor.value.set(...(s.floor || [0.08, 0.07, 0.12]));
+  mat.uniforms.uRimStrength.value = s.rimStrength ?? 0.55;
+  mat.uniforms.uGlow.value = s.glow ?? 1.25;
+  mat.uniforms.uMapMul.value = s.mapMul ?? 2.1;
+  mat.uniforms.uCoatFloor.value.set(...(s.floor || [0.07, 0.06, 0.1]));
   mat.uniforms.uTint.value.set(...(s.tint || [1, 1, 1]));
-  mat.uniforms.uAmbient.value = s.ambient ?? 0.35;
+  mat.uniforms.uAmbient.value = s.ambient ?? 0.22;
 }

@@ -1,9 +1,13 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { createCoatShaderMaterial, applyShaderPresetToMaterial } from './coat-shader.mjs?v=6';
+import {
+  createCoatShaderMaterial,
+  applyShaderPresetToMaterial,
+  textureReady,
+} from './coat-shader.mjs?v=7';
 
-const ASSET_VER = '?v=6';
+const ASSET_VER = '?v=7';
 
 const STAGES = {
   nokki: {
@@ -86,21 +90,21 @@ const LIGHT_PRESETS = {
   studio: {
     id: 'studio',
     label: 'Studio · bright',
-    exposure: { mobile: 1.85, desktop: 1.55 },
+    exposure: { mobile: 1.62, desktop: 1.38 },
     fog: { color: 0x3a4058, density: 0.012 },
     bg: 0x4a5068,
     shader: {
       keyDir: [-0.42, 0.78, 0.48],
-      keyColor: [2.45, 2.5, 2.65],
-      rimColor: [0.95, 1.05, 1.55],
-      wrap: 0.58,
+      keyColor: [1.05, 1.08, 1.18],
+      rimColor: [0.72, 0.78, 0.95],
+      wrap: 0.52,
       rimPower: 2.2,
-      rimStrength: 0.95,
-      glow: 3.6,
-      mapMul: 2.65,
-      ambient: 0.44,
-      floor: [0.08, 0.07, 0.12],
-      tint: [1.05, 1.05, 1.1],
+      rimStrength: 0.55,
+      glow: 1.25,
+      mapMul: 2.1,
+      ambient: 0.22,
+      floor: [0.07, 0.06, 0.1],
+      tint: [1, 1, 1],
     },
     envIntensity: 1.4,
     envPanels: [
@@ -129,16 +133,16 @@ const LIGHT_PRESETS = {
     bg: 0x060612,
     shader: {
       keyDir: [-0.38, 0.72, 0.52],
-      keyColor: [1.55, 1.65, 2.05],
-      rimColor: [0.55, 0.72, 1.25],
-      wrap: 0.54,
+      keyColor: [0.92, 0.98, 1.12],
+      rimColor: [0.45, 0.58, 0.95],
+      wrap: 0.5,
       rimPower: 2.25,
-      rimStrength: 1.05,
-      glow: 4.8,
-      mapMul: 2.55,
-      ambient: 0.52,
-      floor: [0.08, 0.07, 0.13],
-      tint: [0.94, 0.98, 1.14],
+      rimStrength: 0.58,
+      glow: 1.35,
+      mapMul: 2.15,
+      ambient: 0.26,
+      floor: [0.07, 0.06, 0.11],
+      tint: [0.96, 0.98, 1.06],
     },
     envIntensity: 1.15,
     envPanels: [
@@ -167,16 +171,16 @@ const LIGHT_PRESETS = {
     bg: 0x1a0828,
     shader: {
       keyDir: [-0.35, 0.7, 0.45],
-      keyColor: [1.75, 1.45, 2.25],
-      rimColor: [1.25, 0.55, 1.55],
-      wrap: 0.5,
+      keyColor: [1.0, 0.88, 1.12],
+      rimColor: [0.85, 0.42, 1.05],
+      wrap: 0.48,
       rimPower: 2.0,
-      rimStrength: 1.15,
-      glow: 6.2,
-      mapMul: 2.45,
-      ambient: 0.4,
-      floor: [0.09, 0.07, 0.14],
-      tint: [1.05, 0.9, 1.2],
+      rimStrength: 0.62,
+      glow: 1.4,
+      mapMul: 2.05,
+      ambient: 0.2,
+      floor: [0.07, 0.06, 0.12],
+      tint: [1.02, 0.94, 1.08],
     },
     envIntensity: 1.28,
     envPanels: [
@@ -205,16 +209,16 @@ const LIGHT_PRESETS = {
     bg: 0x4a3828,
     shader: {
       keyDir: [-0.4, 0.75, 0.5],
-      keyColor: [2.35, 2.05, 1.55],
-      rimColor: [1.35, 1.05, 0.72],
-      wrap: 0.56,
+      keyColor: [1.12, 1.02, 0.88],
+      rimColor: [0.95, 0.72, 0.48],
+      wrap: 0.52,
       rimPower: 2.15,
-      rimStrength: 0.9,
-      glow: 4.2,
-      mapMul: 2.65,
-      ambient: 0.42,
-      floor: [0.1, 0.08, 0.1],
-      tint: [1.18, 1.08, 0.95],
+      rimStrength: 0.52,
+      glow: 1.2,
+      mapMul: 2.05,
+      ambient: 0.24,
+      floor: [0.08, 0.07, 0.09],
+      tint: [1.06, 1.02, 0.96],
     },
     envIntensity: 1.22,
     envPanels: [
@@ -600,18 +604,21 @@ function applyStageCoat(root, stageId) {
     const mane = sculpt ? centerY >= maneY : false;
 
     const src = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
-    let map = src?.map ?? null;
-    if (map) {
-      map.colorSpace = THREE.SRGBColorSpace;
+    let map = sculpt ? null : (src?.map ?? null);
+    if (map && textureReady(map)) {
+      map.colorSpace = THREE.NoColorSpace;
       map.anisotropy = renderer.capabilities.getMaxAnisotropy();
+      renderer.initTexture(map);
+    } else if (!sculpt) {
+      map = null;
     }
 
     mesh.material = createCoatShaderMaterial({
-      map: sculpt ? null : map,
+      map,
       shaderPreset,
       sculpt,
       mane,
-      bodyColor: profile.bodyColor ?? 0x38324a,
+      bodyColor: profile.bodyColor ?? 0x585068,
       maneColor: profile.maneColor ?? 0xb8c0d8,
     });
     mesh.castShadow = !MOBILE;
@@ -666,7 +673,7 @@ function sanitizeGltfMaterials(root) {
     const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
     mats.forEach((m) => {
       if (m.map) {
-        m.map.colorSpace = THREE.SRGBColorSpace;
+        m.map.colorSpace = THREE.NoColorSpace;
         m.map.anisotropy = renderer.capabilities.getMaxAnisotropy();
       }
       m.metalness = 0;
